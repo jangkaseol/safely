@@ -172,7 +172,9 @@ export function useRegisterForm() {
   const handleSubmit = useCallback(async () => {
     startTransition(async () => {
       try {
-        toast.info("새로운 장소 등록을 시작합니다...");
+        toast.info(
+          "새로운 장소 등록을 시작합니다. 접속자 수에 따라 최대 1분까지 소요될 수 있습니다."
+        );
 
         let finalImageUrl = locationData.image_url;
         if (imageFile) {
@@ -200,7 +202,9 @@ export function useRegisterForm() {
             ocr_text: "",
           });
         }
-        toast.success("관련 데이터 파일 업로드 완료!");
+        if (dataFiles.length > 0) {
+          toast.success("관련 데이터 파일 업로드 완료!");
+        }
 
         const payload: CreateLocationPayload = {
           locationData: {
@@ -228,7 +232,7 @@ export function useRegisterForm() {
           toast.success(
             response.message || "새로운 장소가 성공적으로 등록되었습니다!"
           );
-          router.push(`/`);
+          window.location.href = "/";
         } else {
           throw new Error(response.error || "알 수 없는 서버 오류");
         }
