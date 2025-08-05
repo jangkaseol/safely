@@ -3,8 +3,10 @@
 import { MapPin, Star } from "lucide-react";
 import TopSearchAndCategories from "@/components/top-search-and-categories";
 import PlaceDetailBottomSheet from "@/components/place-detail-bottom-sheet";
+import KakaoMap from "@/components/kakao-map";
 import { useState, useEffect, useCallback } from "react";
 import { getPlaces, type Place } from "@/app/actions/places";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export default function IntegratedMapComponent() {
   const [places, setPlaces] = useState<Place[]>([]);
@@ -12,9 +14,8 @@ export default function IntegratedMapComponent() {
   const [loading, setLoading] = useState(true);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>("");
   const [currentCategory, setCurrentCategory] = useState<string>("all");
-  const [isSearchFocused, setIsSearchFocused] = useState(false); // 검색 포커스 상태 추가
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-  // 데이터 로드 함수
   const loadPlaces = useCallback(
     async (category?: string, searchQuery?: string) => {
       setLoading(true);
@@ -27,7 +28,6 @@ export default function IntegratedMapComponent() {
     []
   );
 
-  // 초기 데이터 로드 및 검색/카테고리 변경 시 데이터 로드
   useEffect(() => {
     loadPlaces(
       currentCategory === "all" ? undefined : currentCategory,
@@ -45,7 +45,11 @@ export default function IntegratedMapComponent() {
     setSelectedPlace(null);
   };
 
-  const handleSelectPlace = (place: Place) => {
+  const handleSelectPlace = (place: Place | null) => {
+    setSelectedPlace(place);
+  };
+
+  const handleSelectPlaceFromList = (place: Place) => {
     setSelectedPlace(place);
   };
 
@@ -53,44 +57,57 @@ export default function IntegratedMapComponent() {
     setSelectedPlace(null);
   };
 
-  // 검색 포커스 상태 변경 핸들러
+  const sortedPlaces = selectedPlace
+    ? [selectedPlace, ...places.filter((p) => p.id !== selectedPlace.id)]
+    : places;
+
   const handleSearchFocusChange = (focused: boolean) => {
     setIsSearchFocused(focused);
   };
 
+  // This layout makes the component itself an absolute layer inside its parent from app/page.tsx.
+  // This bypasses all flexbox height calculation issues and guarantees the map has a space to render in.
   return (
-    <div className="relative w-full flex-1 bg-gray-200 flex flex-col">
-      {/* 지도 플레이스홀더 */}
-      <div className="flex-1 bg-gray-300 flex items-center justify-center text-2xl font-bold text-gray-600">
-        {loading
-          ? "데이터 로딩 중..."
-          : `네이버 지도 (${places.length}개 장소)`}
-      </div>
-
-      {/* 상단 검색창 및 카테고리 */}
-      <TopSearchAndCategories
-        onSearch={handleSearch}
-        onCategorySelect={handleCategorySelect}
-        onFocusChange={handleSearchFocusChange} // 포커스 변경 콜백 추가
-      />
-
-      {/* 플로팅 액션 버튼 (임시) */}
-      <div className="absolute top-[250px] right-4 flex flex-col gap-2 z-10">
-        <button className="bg-white p-3 rounded-full shadow-md">
-          <MapPin className="w-5 h-5 text-gray-700" />
-        </button>
-        <button className="bg-white p-3 rounded-full shadow-md">
-          <Star className="w-5 h-5 text-gray-700" />
-        </button>
-      </div>
-
-      {/* 장소 상세 정보 바텀 시트 */}
-      <PlaceDetailBottomSheet
+    <div className="absolute inset-0">
+      {/* Map is at the bottom of the stack, filling the entire space */}
+      <KakaoMap
         places={places}
         selectedPlace={selectedPlace}
         onSelectPlace={handleSelectPlace}
+      />
+
+      {/* Loading overlay, on top of the map */}
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-30">
+          <LoadingSpinner />
+        </div>
+      )}
+
+      {/* UI elements layered on top of the map with z-index */}
+      <div className="absolute top-0 left-0 right-0 z-10 p-4">
+        <TopSearchAndCategories
+          onSearch={handleSearch}
+          onCategorySelect={handleCategorySelect}
+          onFocusChange={handleSearchFocusChange}
+        />
+      </div>
+
+      <div className="absolute top-[120px] right-4 z-10 flex flex-col gap-2">
+        <button className="rounded-full bg-white p-3 shadow-md">
+          <MapPin className="h-5 w-5 text-gray-700" />
+        </button>
+        <button className="rounded-full bg-white p-3 shadow-md">
+          <Star className="h-5 w-5 text-gray-700" />
+        </button>
+      </div>
+
+      {/* Bottom sheet uses 'fixed' positioning, so it's managed separately by the browser viewport. */}
+      <PlaceDetailBottomSheet
+        places={sortedPlaces}
+        selectedPlace={selectedPlace}
+        onSelectPlace={handleSelectPlaceFromList}
         onBackToList={handleBackToList}
-        isSearchFocused={isSearchFocused} // 검색 포커스 상태 전달
+        isSearchFocused={isSearchFocused}
       />
     </div>
   );
