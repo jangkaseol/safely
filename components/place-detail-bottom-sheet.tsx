@@ -12,16 +12,37 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import type { Place } from "@/app/actions/places";
+import type { Place, AiResponse, HalluCitedChunk } from "@/lib/types";
 import AIChatSheet from "@/components/ai-chat-sheet";
 import RegisterFormSheet from "./register-form-sheet";
+import MarkdownRenderer from "@/components/ui/markdown-renderer";
 
 interface PlaceDetailBottomSheetProps {
   places: Place[];
   selectedPlace: Place | null;
   onSelectPlace: (place: Place) => void;
   onBackToList: () => void;
-  isSearchFocused: boolean; // 검색 포커스 상태 prop 추가
+  isSearchFocused: boolean;
+}
+
+// DB에서 받은 ai_recommendations 값을 파싱하여 화면에 표시할 최종 답변과 출처를 추출하는 함수
+function parseAiRecommendations(
+  recommendations: AiResponse | null | undefined
+): {
+  finalAnswer: string | null;
+  citedChunks: HalluCitedChunk[] | null;
+} {
+  // 추천 정보가 없으면 null 반환
+  if (!recommendations) {
+    return { finalAnswer: null, citedChunks: null };
+  }
+
+  // 최종 답변과 출처(citations)를 추출하여 반환
+  const finalAnswer =
+    recommendations.final_answer || recommendations.generation || null;
+  const citedChunks = recommendations.hallu_check?.cited_chunks || null;
+
+  return { finalAnswer, citedChunks };
 }
 
 export default function PlaceDetailBottomSheet({
@@ -29,7 +50,7 @@ export default function PlaceDetailBottomSheet({
   selectedPlace,
   onSelectPlace,
   onBackToList,
-  isSearchFocused, // 검색 포커스 상태 받기
+  isSearchFocused,
 }: PlaceDetailBottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -38,21 +59,16 @@ export default function PlaceDetailBottomSheet({
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isRegisterSheetOpen, setIsRegisterSheetOpen] = useState(false);
 
-  // 스냅 포인트 정의 (픽셀 단위)
-  const minHeight = 80; // 드래그 핸들만 보이는 최소 높이
+  const minHeight = 80;
   const midHeight =
-    typeof window !== "undefined" ? window.innerHeight * 0.4 : 300; // 중간 높이
-  // 헤더(64px) + 접힌 카테고리 필터(약 100px) 높이를 제외한 최대 확장 높이
+    typeof window !== "undefined" ? window.innerHeight * 0.4 : 300;
   const maxHeight =
     typeof window !== "undefined" ? window.innerHeight - 164 : 600;
 
-  // 현재 시트 높이 상태
   const [height, setHeight] = useState(minHeight);
 
-  // 검색 포커스 상태가 변경될 때 모달 높이 조정
   useEffect(() => {
     if (isSearchFocused) {
-      // 검색창에 포커스가 가면 모달을 최소 높이로 내림
       setHeight(minHeight);
     }
   }, [isSearchFocused, minHeight]);
@@ -102,23 +118,6 @@ export default function PlaceDetailBottomSheet({
   }, [isDragging, minHeight, midHeight, maxHeight]);
 
   useEffect(() => {
-    const currentSheet = sheetRef.current;
-    if (!currentSheet) return;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      setIsDragging(true);
-      startY.current = e.touches[0].clientY;
-      initialSheetHeight.current = currentSheet.clientHeight;
-      currentSheet.style.transition = "none";
-    };
-
-    const handleMouseDown = (e: MouseEvent) => {
-      setIsDragging(true);
-      startY.current = e.clientY;
-      initialSheetHeight.current = currentSheet.clientHeight;
-      currentSheet.style.transition = "none";
-    };
-
     if (isDragging) {
       document.addEventListener("mousemove", handleMove);
       document.addEventListener("mouseup", handleEnd);
@@ -139,16 +138,17 @@ export default function PlaceDetailBottomSheet({
     };
   }, [isDragging, handleMove, handleEnd]);
 
-  // 높이가 minHeight보다 크면 내용과 닫기 버튼을 표시
   const isContentVisible = height > minHeight;
 
-  // 닫기 버튼 클릭 시 완전히 닫힘 (minHeight로)
   const handleClose = useCallback(() => {
     setHeight(minHeight);
     onBackToList();
   }, [onBackToList, minHeight]);
 
-  // Place 데이터를 PlaceInfo 형태로 변환 (상세 보기용)
+  const { finalAnswer, citedChunks } = parseAiRecommendations(
+    selectedPlace?.ai_recommendations
+  );
+
   const placeInfo = selectedPlace
     ? {
         name: selectedPlace.name,
@@ -157,19 +157,20 @@ export default function PlaceDetailBottomSheet({
         rating: selectedPlace.rating?.toString() || "N/A",
         period:
           selectedPlace.period_start && selectedPlace.period_end
-            ? `${selectedPlace.period_start} ~ ${selectedPlace.period_end}` // end_date로 수정
+            ? `${selectedPlace.period_start} ~ ${selectedPlace.period_end}`
             : "N/A",
         visitors: selectedPlace.visitors?.toString() || "N/A",
-        aiAnalysisTitle:
-          selectedPlace.ai_analysis_title || "안전 분석 정보 없음",
+        aiAnalysisTitle: finalAnswer
+          ? ""
+          : selectedPlace.ai_analysis_title || "안전 분석 정보 없음",
         aiAnalysisContent:
+          finalAnswer ||
           selectedPlace.ai_analysis_content ||
           "해당 장소에 대한 안전 분석 정보가 아직 준비되지 않았습니다.",
-        description: selectedPlace.description, // AI 컨텍스트를 위해 description 추가
+        description: selectedPlace.description,
       }
     : null;
 
-  // 새로운 여행지 등록 버튼 클릭 핸들러 (임시)
   const handleRegisterNewPlace = () => {
     setIsRegisterSheetOpen(true);
   };
@@ -190,7 +191,6 @@ export default function PlaceDetailBottomSheet({
           isDragging && "transition-none"
         )}
         style={{ height: `${height}px` }}>
-        {/* 드래그 핸들 */}
         <div
           className="flex justify-center py-3 cursor-grab active:cursor-grabbing touch-none"
           onMouseDown={handleStart}
@@ -198,11 +198,9 @@ export default function PlaceDetailBottomSheet({
           <div className="w-12 h-1 bg-gray-300 rounded-full" />
         </div>
 
-        {/* 내용 스크롤 영역 (내용이 보일 때만 표시) */}
         {isContentVisible && (
           <div className="flex-1 overflow-y-auto px-6 pb-8">
-            {selectedPlace ? (
-              // 상세 보기 (기존 로직 유지)
+            {selectedPlace && placeInfo ? (
               <>
                 <div className="flex items-center justify-between mb-4">
                   <Button
@@ -213,69 +211,70 @@ export default function PlaceDetailBottomSheet({
                     <ChevronLeft className="w-6 h-6" />
                   </Button>
                   <h2 className="text-2xl font-bold flex-1 text-center pr-8">
-                    {placeInfo?.name}
+                    {placeInfo.name}
                   </h2>
                 </div>
                 <div className="flex items-center text-gray-600 mb-4">
                   <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
-                  <span className="text-sm">{placeInfo?.address}</span>
+                  <span className="text-sm">{placeInfo.address}</span>
                 </div>
 
-                {/* 상세 정보 - 이 부분은 상세 보기에서만 유지됩니다. */}
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-3">상세 정보</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
                     <div className="flex items-center gap-2">
                       <Star className="w-4 h-4 text-yellow-500" />
-                      <span>평점: {placeInfo?.rating}</span>
+                      <span>평점: {placeInfo.rating}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-blue-500" />
-                      <span>방문객 수: {placeInfo?.visitors}</span>
+                      <span>방문객 수: {placeInfo.visitors}</span>
                     </div>
                     <div className="flex items-center gap-2 col-span-full">
                       <Calendar className="w-4 h-4 text-purple-500" />
-                      <span>기간: {placeInfo?.period}</span>
+                      <span>기간: {placeInfo.period}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* 이미지 */}
                 <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center mb-6">
                   <img
                     src={
-                      placeInfo?.imageUrl ||
+                      placeInfo.imageUrl ||
                       "/placeholder.svg?height=192&width=384&text=Place Image"
                     }
-                    alt={placeInfo?.name}
+                    alt={placeInfo.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
 
-                {/* AI 안전 분석 */}
                 <Accordion type="single" collapsible defaultValue="item-1">
                   <AccordionItem value="item-1">
                     <AccordionTrigger className="text-lg font-semibold py-3">
                       AI 안전 분석
                     </AccordionTrigger>
                     <AccordionContent className="pt-2 pb-0">
-                      <h4 className="text-xl font-bold mb-2">
-                        {placeInfo?.aiAnalysisTitle}
-                      </h4>
-                      <p className="text-gray-700 leading-relaxed">
-                        {placeInfo?.aiAnalysisContent}
-                      </p>
+                      {placeInfo.aiAnalysisTitle && (
+                        <h4 className="text-xl font-bold mb-2">
+                          {placeInfo.aiAnalysisTitle}
+                        </h4>
+                      )}
+                      <MarkdownRenderer
+                        content={placeInfo.aiAnalysisContent}
+                        citedChunks={citedChunks || undefined}
+                      />
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
 
-                {/* AI에게 질문하기 버튼 추가 */}
-                <Button onClick={handleAskAI} className="w-full mt-6">
+                <Button
+                  onClick={handleAskAI}
+                  className="w-full mt-6"
+                  disabled={!finalAnswer}>
                   AI에게 질문하기
                 </Button>
               </>
             ) : (
-              // 목록 보기 - 이 부분에 평점, 방문객 수, 기간 정보를 추가합니다.
               <div className="grid grid-cols-1 gap-4">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-2xl font-bold">여행지 목록</h2>
@@ -312,7 +311,6 @@ export default function PlaceDetailBottomSheet({
                           <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                           <span className="line-clamp-2">{place.address}</span>
                         </div>
-                        {/* 여기에 평점, 방문객 수, 기간 정보를 추가합니다. */}
                         <div className="flex items-center gap-3 text-xs text-gray-700 mb-2">
                           {place.rating && (
                             <div className="flex items-center gap-1">
@@ -352,7 +350,6 @@ export default function PlaceDetailBottomSheet({
         )}
       </div>
 
-      {/* AI Chat Sheet */}
       {placeInfo && (
         <AIChatSheet
           isOpen={isAIChatOpen}

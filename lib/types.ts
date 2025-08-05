@@ -13,7 +13,7 @@ export interface Place {
   updated_at: string;
   safety_score: number | null;
   safety_analysis_basis: string | null;
-  ai_recommendations: string | null;
+  ai_recommendations: any | null;
   real_time_alerts: string | null;
   rating: number | null;
   visitors: string | null; // location_details.visitors (text 타입)
