@@ -14,7 +14,11 @@ import {
 } from "@/components/ui/accordion";
 import type { Place, AiResponse, HalluCitedChunk } from "@/lib/types";
 import AIChatSheet from "@/components/ai-chat-sheet";
-import RegisterFormSheet from "./register-form-sheet";
+import dynamic from "next/dynamic";
+
+const RegisterFormSheet = dynamic(() => import("./register-form-sheet"), {
+  ssr: false,
+});
 import MarkdownRenderer from "@/components/ui/markdown-renderer";
 
 interface PlaceDetailBottomSheetProps {
