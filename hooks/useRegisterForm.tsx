@@ -228,7 +228,7 @@ export function useRegisterForm() {
           toast.success(
             response.message || "새로운 장소가 성공적으로 등록되었습니다!"
           );
-          router.push(`/item/${response.location_id}`);
+          router.push(`/`);
         } else {
           throw new Error(response.error || "알 수 없는 서버 오류");
         }

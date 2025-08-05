@@ -185,7 +185,9 @@ export default function RegisterForm() {
             <div className="flex flex-col gap-4">
               <RadioGroup
                 value={periodType}
-                onValueChange={setPeriodType}
+                onValueChange={(value) =>
+                  setPeriodType(value as "always" | "period")
+                }
                 className="flex items-center space-x-2">
                 <Label
                   htmlFor="always"
@@ -193,7 +195,7 @@ export default function RegisterForm() {
                   <RadioGroupItem
                     value={PERIOD_TYPE.ALWAYS}
                     id="always"
-                    className="size-5"
+                    className="size-6"
                   />
                   <span className="font-normal text-sm sm:text-base">상시</span>
                 </Label>
@@ -203,7 +205,7 @@ export default function RegisterForm() {
                   <RadioGroupItem
                     value={PERIOD_TYPE.PERIOD}
                     id="period"
-                    className="size-5"
+                    className="size-6"
                   />
                   <span className="font-normal text-sm sm:text-base">
                     기간 지정

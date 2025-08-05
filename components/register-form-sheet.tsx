@@ -34,7 +34,7 @@ export default function RegisterFormSheet({
             여행을 만들어보세요.
           </SheetDescription>
         </SheetHeader>
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 pb-6">
             <RegisterForm />
           </div>

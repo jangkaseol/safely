@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-
 import Script from "next/script";
 import DaumPostcode, { type Address } from "react-daum-postcode";
 import { toast } from "sonner";
@@ -16,6 +15,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+declare global {
+  interface Window {
+    kakao: any;
+  }
+}
+
 interface AddressSearchProps {
   onComplete: (data: {
     address: string;
@@ -29,21 +34,22 @@ export default function AddressSearch({ onComplete }: AddressSearchProps) {
   const [isMapReady, setIsMapReady] = useState(false);
 
   const handleScriptLoad = () => {
-    if ((window as any).kakao && (window as any).kakao.maps) {
-      setIsMapReady(true);
+    if (window.kakao && window.kakao.maps) {
+      window.kakao.maps.load(() => {
+        setIsMapReady(true);
+      });
     }
   };
 
   const handleComplete = (data: Address) => {
-    const { kakao } = window as any;
-    if (!kakao?.maps?.services) {
+    if (!window.kakao?.maps?.services) {
       toast.error("지도 서비스를 불러오는 데 실패했습니다. 다시 시도해주세요.");
       return;
     }
 
-    const geocoder = new kakao.maps.services.Geocoder();
+    const geocoder = new window.kakao.maps.services.Geocoder();
     geocoder.addressSearch(data.address, (result: any, status: any) => {
-      if (status === kakao.maps.services.Status.OK && result) {
+      if (status === window.kakao.maps.services.Status.OK && result) {
         onComplete({
           address: result[0].address_name,
           latitude: Number(result[0].y),
@@ -68,7 +74,7 @@ export default function AddressSearch({ onComplete }: AddressSearchProps) {
           <Button
             type="button"
             variant="outline"
-            className="ml-2"
+            className="w-full sm:w-auto flex-shrink-0"
             disabled={!isMapReady}>
             {isMapReady ? "주소 검색" : "준비 중..."}
           </Button>
