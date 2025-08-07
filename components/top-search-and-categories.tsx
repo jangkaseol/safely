@@ -22,6 +22,7 @@ interface TopSearchAndCategoriesProps {
   onSearch?: (query: string) => void;
   onCategorySelect?: (categories: string[]) => void;
   onFocusChange?: (focused: boolean) => void;
+  initialSelectedCategories?: string[];
 }
 
 interface SearchSuggestion {
@@ -34,10 +35,13 @@ export default function TopSearchAndCategories({
   onSearch,
   onCategorySelect,
   onFocusChange,
+  initialSelectedCategories = [],
 }: TopSearchAndCategoriesProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categories] = useState(staticCategories);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    initialSelectedCategories
+  );
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

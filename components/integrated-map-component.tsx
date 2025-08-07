@@ -19,7 +19,10 @@ export default function IntegratedMapComponent() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>("");
-  const [currentCategories, setCurrentCategories] = useState<string[]>([]);
+  const [currentCategories, setCurrentCategories] = useState<string[]>([
+    "tourist_spot",
+    "festival",
+  ]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({
     lat: 36.5,
@@ -185,6 +188,7 @@ export default function IntegratedMapComponent() {
           onSearch={handleSearch}
           onCategorySelect={handleCategorySelect}
           onFocusChange={handleSearchFocusChange}
+          initialSelectedCategories={currentCategories}
         />
       </div>
 
