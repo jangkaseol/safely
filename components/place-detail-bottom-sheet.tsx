@@ -271,14 +271,6 @@ export default function PlaceDetailBottomSheet({
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-3">상세 정보</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
-                    <div className="flex items-center gap-2">
-                      <Star className="w-4 h-4 text-yellow-500" />
-                      <span>평점: {placeInfo.rating}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-blue-500" />
-                      <span>방문객 수: {placeInfo.visitors}</span>
-                    </div>
                     <div className="flex items-center gap-2 col-span-full">
                       <Calendar className="w-4 h-4 text-purple-500" />
                       <span>기간: {placeInfo.period}</span>

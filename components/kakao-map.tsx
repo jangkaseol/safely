@@ -73,6 +73,19 @@ export default function KakaoMap({
 }: KakaoMapProps) {
   const [map, setMap] = useState<kakao.maps.Map>();
   const markerClickedRef = useRef(false);
+  const [isKakaoLoaded, setIsKakaoLoaded] = useState(false);
+
+  // 카카오 맵 초기화
+  // 주의: react-kakao-maps-sdk 사용 시 수동 초기화 필요
+  // autoload=false로 설정된 스크립트를 window.kakao.maps.load()로 활성화
+  useEffect(() => {
+    if (window.kakao && window.kakao.maps) {
+      window.kakao.maps.load(() => {
+        // console.log("✅ KakaoMap: 카카오 맵 초기화 완료");
+        setIsKakaoLoaded(true);
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (map && center) {
@@ -95,6 +108,14 @@ export default function KakaoMap({
       map.panTo(newCenter);
     }
   }, [map, selectedPlace]);
+
+  if (!isKakaoLoaded) {
+    return (
+      <div className="flex items-center justify-center w-full h-full bg-gray-100">
+        <div className="text-gray-500">지도 로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <Map
