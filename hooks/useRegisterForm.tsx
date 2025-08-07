@@ -210,19 +210,25 @@ export function useRegisterForm() {
 
         const mainEmergencyContact = emergencyContacts[0] || {};
 
+        const finalLocationData = { ...locationData };
+        if (!finalLocationData.location) {
+          finalLocationData.location = "서울 서초구 고무래로 89";
+          finalLocationData.latitude = 37.5113;
+          finalLocationData.longitude = 127.0206;
+        }
         const payload = {
-          place_name: locationData.name || "",
-          type: locationData.type || "",
-          location: locationData.location || "",
-          latitude: locationData.latitude,
-          longitude: locationData.longitude,
+          place_name: finalLocationData.name || "",
+          type: finalLocationData.type || "",
+          location: finalLocationData.location,
+          latitude: finalLocationData.latitude,
+          longitude: finalLocationData.longitude,
           period: period,
-          description: locationData.description || "",
-          category: locationData.category || "",
+          description: finalLocationData.description || "",
+          category: finalLocationData.category || "",
           related_documents: relatedDocumentsBase64,
           emergency_contact_name: mainEmergencyContact.name || "",
           emergency_contact_phone: mainEmergencyContact.contact_number || "",
-          expected_attendees: locationData.expected_attendees || "",
+          expected_attendees: finalLocationData.expected_attendees || "",
         };
 
         const response = await fetch("/api/custom_form", {
@@ -231,7 +237,7 @@ export function useRegisterForm() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             locationData: {
-              ...locationData,
+              ...finalLocationData,
               start_date:
                 periodType === "period" && dateRange?.from
                   ? format(dateRange.from, "yyyy-MM-dd")

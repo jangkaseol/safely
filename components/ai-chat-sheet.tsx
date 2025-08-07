@@ -74,7 +74,7 @@ export default function AIChatSheet({
 
     try {
       const payload = {
-        generated_form: placeInfo.ai_recommendations,
+        generated_form: placeInfo.ai_recommendations?.generation || "",
         query: currentInput,
         session_id: sessionId,
       };

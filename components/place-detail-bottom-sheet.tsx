@@ -33,20 +33,19 @@ interface PlaceDetailBottomSheetProps {
 function parseAiRecommendations(
   recommendations: AiResponse | null | undefined
 ): {
-  finalAnswer: string | null;
+  generation: string | null;
   citedChunks: HalluCitedChunk[] | null;
 } {
   // 추천 정보가 없으면 null 반환
   if (!recommendations) {
-    return { finalAnswer: null, citedChunks: null };
+    return { generation: null, citedChunks: null };
   }
 
   // 최종 답변과 출처(citations)를 추출하여 반환
-  const finalAnswer =
-    recommendations.final_answer || recommendations.generation || null;
+  const generation = recommendations.generation || null;
   const citedChunks = recommendations.hallu_check?.cited_chunks || null;
 
-  return { finalAnswer, citedChunks };
+  return { generation, citedChunks };
 }
 
 export default function PlaceDetailBottomSheet({
@@ -149,7 +148,7 @@ export default function PlaceDetailBottomSheet({
     onBackToList();
   }, [onBackToList, minHeight]);
 
-  const { finalAnswer, citedChunks } = parseAiRecommendations(
+  const { generation, citedChunks } = parseAiRecommendations(
     selectedPlace?.ai_recommendations
   );
 
@@ -164,11 +163,11 @@ export default function PlaceDetailBottomSheet({
             ? `${selectedPlace.period_start} ~ ${selectedPlace.period_end}`
             : "N/A",
         visitors: selectedPlace.visitors?.toString() || "N/A",
-        aiAnalysisTitle: finalAnswer
+        aiAnalysisTitle: generation
           ? ""
           : selectedPlace.ai_analysis_title || "안전 분석 정보 없음",
         aiAnalysisContent:
-          finalAnswer ||
+          generation ||
           selectedPlace.ai_analysis_content ||
           "해당 장소에 대한 안전 분석 정보가 아직 준비되지 않았습니다.",
         description: selectedPlace.description,
@@ -277,7 +276,7 @@ export default function PlaceDetailBottomSheet({
                 <Button
                   onClick={handleAskAI}
                   className="w-full mt-6"
-                  disabled={!finalAnswer}
+                  disabled={!generation}
                 >
                   AI에게 질문하기
                 </Button>
@@ -365,9 +364,10 @@ export default function PlaceDetailBottomSheet({
           isOpen={isAIChatOpen}
           onClose={() => setIsAIChatOpen(false)}
           placeInfo={{
-            name: placeInfo.name,
-            address: placeInfo.address,
-            description: placeInfo.description,
+            name: selectedPlace?.name || "",
+            address: selectedPlace?.address || "",
+            description: selectedPlace?.description || "",
+            ai_recommendations: selectedPlace?.ai_recommendations || null,
           }}
         />
       )}
