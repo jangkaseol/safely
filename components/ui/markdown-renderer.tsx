@@ -207,6 +207,22 @@ export default function MarkdownRenderer({
     }) => (
       <li {...props}>{processChildrenForCitations(children, citedChunks)}</li>
     ),
+    strong: ({
+      node,
+      children,
+      ...props
+    }: {
+      node: any;
+      children: React.ReactNode;
+      props: any;
+    }) => (
+      <strong
+        className="rounded-md px-1 py-0.5 font-bold text-blue-800"
+        {...props}
+      >
+        {processChildrenForCitations(children, citedChunks)}
+      </strong>
+    ),
   };
 
   return (
