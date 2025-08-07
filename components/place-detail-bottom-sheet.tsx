@@ -194,11 +194,13 @@ export default function PlaceDetailBottomSheet({
           "transition-transform duration-300 ease-out",
           isDragging && "transition-none"
         )}
-        style={{ height: `${height}px` }}>
+        style={{ height: `${height}px` }}
+      >
         <div
           className="flex justify-center py-3 cursor-grab active:cursor-grabbing touch-none"
           onMouseDown={handleStart}
-          onTouchStart={handleStart}>
+          onTouchStart={handleStart}
+        >
           <div className="w-12 h-1 bg-gray-300 rounded-full" />
         </div>
 
@@ -211,7 +213,8 @@ export default function PlaceDetailBottomSheet({
                     variant="ghost"
                     size="icon"
                     onClick={onBackToList}
-                    className="-ml-2">
+                    className="-ml-2"
+                  >
                     <ChevronLeft className="w-6 h-6" />
                   </Button>
                   <h2 className="text-2xl font-bold flex-1 text-center pr-8">
@@ -274,7 +277,8 @@ export default function PlaceDetailBottomSheet({
                 <Button
                   onClick={handleAskAI}
                   className="w-full mt-6"
-                  disabled={!finalAnswer}>
+                  disabled={!finalAnswer}
+                >
                   AI에게 질문하기
                 </Button>
               </>
@@ -286,7 +290,8 @@ export default function PlaceDetailBottomSheet({
                     variant="outline"
                     size="sm"
                     onClick={handleRegisterNewPlace}
-                    className="flex items-center gap-1 bg-transparent">
+                    className="flex items-center gap-1 bg-transparent"
+                  >
                     <Plus className="w-4 h-4" />
                     <span>새로운 여행지 등록하기</span>
                   </Button>
@@ -296,7 +301,8 @@ export default function PlaceDetailBottomSheet({
                     <Card
                       key={place.id}
                       className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => onSelectPlace(place)}>
+                      onClick={() => onSelectPlace(place)}
+                    >
                       <div className="relative">
                         <img
                           src={

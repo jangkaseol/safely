@@ -29,7 +29,6 @@ export interface Location {
   location: string;
   latitude: number | null;
   longitude: number | null;
-  region: string | null;
   type: string | null;
   description: string | null;
   image_url: string | null;
@@ -42,6 +41,7 @@ export interface Location {
   updated_at?: string;
   start_time: string | null;
   end_time: string | null;
+  expected_attendees: string | null; // text 타입으로 변경
   location_details?: LocationDetail | null;
 }
 
@@ -117,8 +117,12 @@ export interface UploadedFile {
 
 // 서버 액션 createLocation에 전달될 데이터 타입
 export type CreateLocationPayload = {
-  locationData: Omit<Location, "id" | "created_at" | "updated_at" | "user_id">;
+  locationData: Omit<
+    Location,
+    "id" | "created_at" | "updated_at" | "user_id"
+  > & { user_id: string };
   files: Omit<LocationFiles, "id" | "location_id" | "created_at" | "user_id">[];
+  aiRecommendation: any;
 };
 
 // API 응답의 `searched_documents` 배열 내 객체 타입
@@ -161,7 +165,6 @@ export interface AiResponse {
   final_answer: string;
   place_name: string;
   type: string;
-  region: string;
   period: string;
   description: string;
   category: string;

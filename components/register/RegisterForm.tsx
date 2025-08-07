@@ -42,26 +42,6 @@ import { cn } from "@/lib/utils";
 import AddressSearch from "./AddressSearch";
 import { useRegisterForm } from "@/hooks/useRegisterForm";
 
-const REGIONS = [
-  "서울",
-  "부산",
-  "대구",
-  "인천",
-  "광주",
-  "대전",
-  "울산",
-  "세종",
-  "경기",
-  "강원",
-  "충북",
-  "충남",
-  "전북",
-  "전남",
-  "경북",
-  "경남",
-  "제주",
-];
-
 const LOCATION_TYPES = Object.values(LOCATION_TYPE_VALUES);
 
 export default function RegisterForm() {
@@ -98,7 +78,8 @@ export default function RegisterForm() {
           e.preventDefault();
           handleSubmit();
         }}
-        className="space-y-6">
+        className="space-y-6"
+      >
         <Card className="border-none shadow-none">
           <CardHeader className="px-0">
             <CardTitle className="text-xl">기본 정보</CardTitle>
@@ -129,7 +110,8 @@ export default function RegisterForm() {
                       target: { name: "type", value },
                     } as any)
                   }
-                  required>
+                  required
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="유형 선택" />
                   </SelectTrigger>
@@ -160,29 +142,6 @@ export default function RegisterForm() {
                   <AddressSearch onComplete={handleAddressComplete} />
                 </div>
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="region">지역</Label>
-                <Select
-                  name="region"
-                  value={locationData.region ?? ""}
-                  onValueChange={(value) =>
-                    handleInputChange({
-                      target: { name: "region", value },
-                    } as any)
-                  }
-                  required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="지역 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REGIONS.map((r: string) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             <div className="space-y-4">
@@ -193,10 +152,12 @@ export default function RegisterForm() {
                   onValueChange={(value) =>
                     setPeriodType(value as "always" | "period")
                   }
-                  className="flex items-center space-x-2">
+                  className="flex items-center space-x-2"
+                >
                   <Label
                     htmlFor="always"
-                    className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100 transition-colors">
+                    className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100 transition-colors"
+                  >
                     <RadioGroupItem
                       value={PERIOD_TYPE.ALWAYS}
                       id="always"
@@ -208,7 +169,8 @@ export default function RegisterForm() {
                   </Label>
                   <Label
                     htmlFor="period"
-                    className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100 transition-colors">
+                    className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100 transition-colors"
+                  >
                     <RadioGroupItem
                       value={PERIOD_TYPE.PERIOD}
                       id="period"
@@ -221,7 +183,8 @@ export default function RegisterForm() {
                 </RadioGroup>
 
                 <div
-                  className={cn(periodType !== PERIOD_TYPE.PERIOD && "hidden")}>
+                  className={cn(periodType !== PERIOD_TYPE.PERIOD && "hidden")}
+                >
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -230,7 +193,8 @@ export default function RegisterForm() {
                         className={cn(
                           "w-full justify-start text-left font-normal",
                           !dateRange && "text-muted-foreground"
-                        )}>
+                        )}
+                      >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {dateRange?.from ? (
                           dateRange.to ? (
@@ -343,6 +307,16 @@ export default function RegisterForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8 px-0">
+            <div className="space-y-2">
+              <Label htmlFor="expected_attendees">예상 방문객 수</Label>
+              <Input
+                id="expected_attendees"
+                name="expected_attendees"
+                placeholder="예: 일 평균 5만명"
+                value={locationData.expected_attendees ?? ""}
+                onChange={handleInputChange}
+              />
+            </div>
             <div className="space-y-4">
               <Label className="text-base font-medium">
                 관련 데이터 첨부 (선택)
@@ -372,7 +346,8 @@ export default function RegisterForm() {
                 {dataFiles.map((df) => (
                   <div
                     key={df.id}
-                    className="flex items-center gap-2 rounded-md border bg-gray-50 p-3">
+                    className="flex items-center gap-2 rounded-md border bg-gray-50 p-3"
+                  >
                     <div className="flex-1 space-y-2">
                       <p className="text-sm font-medium truncate">
                         {df.file_name}
@@ -391,7 +366,8 @@ export default function RegisterForm() {
                       variant="ghost"
                       size="icon"
                       onClick={() => removeDataFile(df.id)}
-                      className="flex-shrink-0">
+                      className="flex-shrink-0"
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
@@ -406,7 +382,8 @@ export default function RegisterForm() {
               {emergencyContacts.map((contact) => (
                 <div
                   key={contact.id}
-                  className="space-y-4 rounded-md border p-4">
+                  className="space-y-4 rounded-md border p-4"
+                >
                   <div className="grid grid-cols-1 gap-y-4">
                     <div className="space-y-2">
                       <Label htmlFor={`contactName-${contact.id}`}>
@@ -449,7 +426,8 @@ export default function RegisterForm() {
                     size="sm"
                     onClick={() => removeEmergencyContact(contact.id)}
                     disabled={emergencyContacts.length <= 1}
-                    className="w-full text-red-500">
+                    className="w-full text-red-500"
+                  >
                     - 연락처 삭제
                   </Button>
                 </div>
@@ -458,7 +436,8 @@ export default function RegisterForm() {
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={addEmergencyContact}>
+                onClick={addEmergencyContact}
+              >
                 + 연락처 추가
               </Button>
             </div>
@@ -470,7 +449,8 @@ export default function RegisterForm() {
             type="submit"
             size="lg"
             disabled={isPending}
-            className="w-full sm:w-auto">
+            className="w-full sm:w-auto"
+          >
             {isPending ? "분석 및 등록 중..." : "정보 등록하기"}
           </Button>
           <Button
@@ -478,7 +458,8 @@ export default function RegisterForm() {
             variant="outline"
             size="lg"
             asChild
-            className="w-full sm:w-auto">
+            className="w-full sm:w-auto"
+          >
             <Link href="/">취소</Link>
           </Button>
         </div>

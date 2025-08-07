@@ -44,7 +44,6 @@ export function useRegisterForm() {
     location: "",
     latitude: null,
     longitude: null,
-    region: "서울",
     type: "관광지",
     description: "",
     image_url: null,
@@ -52,6 +51,7 @@ export function useRegisterForm() {
     status: "운영중",
     start_time: null,
     end_time: null,
+    expected_attendees: "", // 빈 문자열로 초기화
   });
 
   const [periodType, setPeriodType] = useState<"always" | "period">("always");
@@ -169,73 +169,95 @@ export function useRegisterForm() {
     []
   );
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // "data:*/*;base64," 부분을 제거합니다.
+        const base64 = result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handleSubmit = useCallback(async () => {
     startTransition(async () => {
       try {
         toast.info(
-          "새로운 장소 등록을 시작합니다. 접속자 수에 따라 최대 1분까지 소요될 수 있습니다."
+          "새로운 장소 등록 및 AI 분석을 시작합니다. 최대 1분까지 소요될 수 있습니다."
         );
 
-        let finalImageUrl = locationData.image_url;
-        if (imageFile) {
-          toast.info("대표 이미지를 업로드 중입니다...");
-          const uploadedImage = await uploadFile(imageFile);
-          finalImageUrl = uploadedImage.url;
-          toast.success("대표 이미지 업로드 완료!");
-        } else if (!finalImageUrl) {
-          finalImageUrl = `https://picsum.photos/seed/${uuidv4()}/600/400`;
+        // 외부 API는 단일 파일의 Base64 문자열을 기대합니다.
+        // 업로드된 파일(첨부파일 또는 대표 이미지) 중 첫 번째 파일 하나만 선택합니다.
+        let relatedDocumentsBase64 = "";
+        const fileToUpload = dataFiles[0]?.file || imageFile;
+
+        if (fileToUpload) {
+          relatedDocumentsBase64 = await fileToBase64(fileToUpload);
         }
 
-        toast.info("관련 데이터 파일을 업로드 중입니다...");
-        const uploadedFiles: Omit<
-          LocationFiles,
-          "id" | "location_id" | "created_at" | "user_id"
-        >[] = [];
-        for (const dataFile of dataFiles) {
-          const uploaded = await uploadFile(dataFile.file);
-          uploadedFiles.push({
-            file_name: uploaded.name,
-            file_path: uploaded.path,
-            file_type: uploaded.type,
-            file_size: uploaded.size,
-            description: dataFile.description,
-            ocr_text: "",
-          });
-        }
-        if (dataFiles.length > 0) {
-          toast.success("관련 데이터 파일 업로드 완료!");
-        }
+        const period =
+          periodType === "period"
+            ? `${
+                dateRange?.from ? format(dateRange.from, "yyyy년 M월 d일") : ""
+              } ~ ${
+                dateRange?.to ? format(dateRange.to, "yyyy년 M월 d일") : ""
+              }`
+            : "상시";
 
-        const payload: CreateLocationPayload = {
-          locationData: {
-            ...locationData,
-            image_url: finalImageUrl,
-            emergency_contacts: emergencyContacts
-              .filter((c) => c.name && c.contact_number)
-              .map(({ id, ...rest }) => rest),
-            start_date:
-              periodType === "period" && dateRange?.from
-                ? format(dateRange.from, "yyyy-MM-dd")
-                : null,
-            end_date:
-              periodType === "period" && dateRange?.to
-                ? format(dateRange.to, "yyyy-MM-dd")
-                : null,
-          },
-          files: uploadedFiles,
+        const mainEmergencyContact = emergencyContacts[0] || {};
+
+        const payload = {
+          place_name: locationData.name || "",
+          type: locationData.type || "",
+          location: locationData.location || "",
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          period: period,
+          description: locationData.description || "",
+          category: locationData.category || "",
+          related_documents: relatedDocumentsBase64,
+          emergency_contact_name: mainEmergencyContact.name || "",
+          emergency_contact_phone: mainEmergencyContact.contact_number || "",
+          expected_attendees: locationData.expected_attendees || "",
         };
 
-        toast.info("서버에 등록 및 AI 분석을 요청합니다...");
-        const response = await createLocation(payload);
+        const response = await fetch("/api/custom_form", {
+          // custom_form으로 수정
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            locationData: {
+              ...locationData,
+              start_date:
+                periodType === "period" && dateRange?.from
+                  ? format(dateRange.from, "yyyy-MM-dd")
+                  : null,
+              end_date:
+                periodType === "period" && dateRange?.to
+                  ? format(dateRange.to, "yyyy-MM-dd")
+                  : null,
+            },
+            aiRequest: payload,
+          }),
+        });
 
-        if (response.success && response.location_id) {
-          toast.success(
-            response.message || "새로운 장소가 성공적으로 등록되었습니다!"
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || "AI 서버와의 통신 중 오류가 발생했습니다."
           );
-          window.location.href = "/";
-        } else {
-          throw new Error(response.error || "알 수 없는 서버 오류");
         }
+
+        const result = await response.json();
+
+        toast.success(
+          result.message || "새로운 장소가 성공적으로 등록되었습니다!"
+        );
+        window.location.href = "/";
       } catch (error: any) {
         console.error("Submit error:", error);
         let errorMessage = "알 수 없는 오류가 발생했습니다.";
@@ -252,7 +274,6 @@ export function useRegisterForm() {
     emergencyContacts,
     periodType,
     dateRange,
-    router,
   ]);
 
   return {

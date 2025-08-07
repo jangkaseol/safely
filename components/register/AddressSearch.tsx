@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+
 import Script from "next/script";
 import DaumPostcode, { type Address } from "react-daum-postcode";
 import { toast } from "sonner";
@@ -14,12 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-declare global {
-  interface Window {
-    kakao: any;
-  }
-}
 
 interface AddressSearchProps {
   onComplete: (data: {
@@ -48,7 +43,7 @@ export default function AddressSearch({ onComplete }: AddressSearchProps) {
     }
 
     const geocoder = new window.kakao.maps.services.Geocoder();
-    geocoder.addressSearch(data.address, (result: any, status: any) => {
+    geocoder.addressSearch(data.address, (result, status) => {
       if (status === window.kakao.maps.services.Status.OK && result) {
         onComplete({
           address: result[0].address_name,
@@ -74,8 +69,9 @@ export default function AddressSearch({ onComplete }: AddressSearchProps) {
           <Button
             type="button"
             variant="outline"
-            className="w-full sm:w-auto flex-shrink-0"
-            disabled={!isMapReady}>
+            className="ml-2"
+            disabled={!isMapReady}
+          >
             {isMapReady ? "주소 검색" : "준비 중..."}
           </Button>
         </DialogTrigger>

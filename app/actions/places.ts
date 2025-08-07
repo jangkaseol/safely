@@ -11,7 +11,6 @@ interface LocationRow {
   location: string; // This is the address field in the DB
   latitude: number | null;
   longitude: number | null;
-  region: string | null;
   type: string | null;
   description: string | null;
   image_url: string | null;
@@ -23,6 +22,7 @@ interface LocationRow {
   created_at: string;
   updated_at: string;
   start_time: string | null; // time without time zone
+  expected_attendees: string | null; // text 타입으로 변경
   end_time: string | null; // time without time zone
 }
 

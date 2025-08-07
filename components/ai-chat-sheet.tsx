@@ -57,6 +57,7 @@ export default function AIChatSheet({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    e.stopPropagation(); // 이벤트 버블링 중단
     if (!input.trim() || !placeInfo) return;
 
     const userMessage: Message = {
@@ -124,7 +125,8 @@ export default function AIChatSheet({
         "fixed inset-0 bg-white z-40 flex flex-col",
         "transform transition-transform duration-300 ease-out",
         isOpen ? "translate-y-0" : "translate-y-full"
-      )}>
+      )}
+    >
       <div className="p-4 border-b flex items-center justify-between">
         <Button variant="outline" size="icon" onClick={onClose}>
           <ChevronLeft className="w-6 h-6" />
@@ -143,7 +145,8 @@ export default function AIChatSheet({
             variant="outline"
             size="icon"
             onClick={onClose}
-            className="mr-4 flex-shrink-0">
+            className="mr-4 flex-shrink-0"
+          >
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <div>
@@ -171,7 +174,8 @@ export default function AIChatSheet({
             className={cn(
               "flex items-start gap-3",
               msg.role === "user" ? "justify-end" : "justify-start"
-            )}>
+            )}
+          >
             {msg.role === "assistant" && (
               <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
                 <Bot className="w-5 h-5 text-gray-600" />
@@ -183,7 +187,8 @@ export default function AIChatSheet({
                 msg.role === "user"
                   ? "bg-blue-500 text-white"
                   : "bg-gray-100 text-gray-800"
-              )}>
+              )}
+            >
               <MarkdownRenderer content={msg.content} />
             </div>
             {msg.role === "user" && (
@@ -209,7 +214,8 @@ export default function AIChatSheet({
       <div className="p-4 border-t bg-white">
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2 rounded-lg border bg-gray-50 p-1.5">
+          className="flex items-center gap-2 rounded-lg border bg-gray-50 p-1.5"
+        >
           <Textarea
             placeholder="AI에게 무엇이든 물어보세요..."
             value={input}
@@ -223,7 +229,8 @@ export default function AIChatSheet({
           <Button
             type="submit"
             size="icon"
-            disabled={isLoading || !input.trim()}>
+            disabled={isLoading || !input.trim()}
+          >
             <Send className="w-5 h-5" />
           </Button>
         </form>
