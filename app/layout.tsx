@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: "안전 네비게이터 - 안전하고 즐거운 여행을 함께",
   description: "검증된 안전 정보로 걱정 없는 여행을 계획하세요",
   generator: "v0.dev",
+  icons: {
+    icon: "/safety-navigator.png",
+  },
 };
 
 const KAKAO_MAP_API_KEY = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
