@@ -37,18 +37,17 @@ const getMarkerImageInfo = (
     }
   }
 
-  let icon = "";
-  let color = "";
   if (category === LOCATION_TYPES.TOURIST_SPOT) {
-    color = "#10b981"; // emerald-500
-    icon = `<path fill="${color}" d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6h-5.6z"/>`;
-  } else if (category === LOCATION_TYPES.FESTIVAL) {
-    color = "#3b82f6"; // blue-500
-    icon = `<path fill="${color}" d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6h-5.6z"/>`;
-  } else {
-    color = "#f97316"; // orange-500
-    icon = `<path fill="${color}" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>`;
+    return { src: "/london-eye.svg" };
   }
+
+  if (category === LOCATION_TYPES.FESTIVAL) {
+    return { src: "/firecracker.svg" };
+  }
+
+  // 기본 마커 (별 모양)
+  const color = "#f97316"; // orange-500
+  const icon = `<path fill="${color}" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>`;
 
   const svgString = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${MARKER_SIZE}" height="${MARKER_SIZE}">
