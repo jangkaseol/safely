@@ -7,9 +7,11 @@ import KakaoMap from "@/components/kakao-map";
 import { useState, useEffect, useCallback } from "react";
 import { getPlaces, type Place } from "@/app/actions/places";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { Accident } from "@/lib/types";
 
 export default function IntegratedMapComponent() {
   const [places, setPlaces] = useState<Place[]>([]);
+  const [accidents, setAccidents] = useState<Accident[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>("");
@@ -19,9 +21,15 @@ export default function IntegratedMapComponent() {
   const loadPlaces = useCallback(
     async (category?: string, searchQuery?: string) => {
       setLoading(true);
-      const result = await getPlaces(category, searchQuery);
-      if (result.success) {
-        setPlaces(result.data);
+      // "사고 위치"가 아닐 때만 장소 데이터를 불러옵니다.
+      if (category !== "accident_location") {
+        const result = await getPlaces(category, searchQuery);
+        if (result.success) {
+          setPlaces(result.data);
+        }
+        setAccidents([]); // 장소 검색 시 사고 데이터는 비웁니다.
+      } else {
+        setPlaces([]); // 사고 위치 검색 시 장소 데이터는 비웁니다.
       }
       setLoading(false);
     },
@@ -38,11 +46,20 @@ export default function IntegratedMapComponent() {
   const handleSearch = (query: string) => {
     setCurrentSearchQuery(query);
     setSelectedPlace(null);
+    setCurrentCategory("all"); // 검색 시 카테고리를 '전체'로 초기화
   };
 
   const handleCategorySelect = (category: string) => {
     setCurrentCategory(category);
     setSelectedPlace(null);
+    setCurrentSearchQuery(""); // 카테고리 변경 시 검색어 초기화
+  };
+
+  const handleAccidentDataLoad = (data: Accident[]) => {
+    setLoading(true);
+    setAccidents(data);
+    setPlaces([]); // 사고 데이터 로드 시 장소 목록 초기화
+    setLoading(false);
   };
 
   const handleSelectPlace = (place: Place | null) => {
@@ -72,6 +89,7 @@ export default function IntegratedMapComponent() {
       {/* Map is at the bottom of the stack, filling the entire space */}
       <KakaoMap
         places={places}
+        accidents={accidents}
         selectedPlace={selectedPlace}
         onSelectPlace={handleSelectPlace}
       />
@@ -89,6 +107,7 @@ export default function IntegratedMapComponent() {
           onSearch={handleSearch}
           onCategorySelect={handleCategorySelect}
           onFocusChange={handleSearchFocusChange}
+          onAccidentDataLoad={handleAccidentDataLoad}
         />
       </div>
 
