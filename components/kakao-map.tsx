@@ -19,6 +19,8 @@ interface KakaoMapProps {
   accidents?: Accident[];
   selectedPlace?: Place | null;
   onSelectPlace?: (place: Place | null) => void;
+  onMapIdle?: (center: { lat: number; lng: number }) => void;
+  center?: { lat: number; lng: number };
 }
 
 const getMarkerSvg = (category: string | null, isAccident: boolean = false) => {
@@ -51,62 +53,46 @@ export default function KakaoMap({
   accidents = [],
   selectedPlace,
   onSelectPlace,
+  onMapIdle,
+  center = { lat: 36.5, lng: 127.5 },
 }: KakaoMapProps) {
   const [map, setMap] = useState<kakao.maps.Map>();
 
   useEffect(() => {
-    if (map) {
-      map.relayout();
+    if (map && center) {
+      const newCenter = new kakao.maps.LatLng(center.lat, center.lng);
+      map.setCenter(newCenter);
     }
-  }, [map]);
+  }, [map, center]);
 
   useEffect(() => {
     if (
       map &&
       selectedPlace &&
       selectedPlace.latitude &&
-      selectedPlace.longitude &&
-      onSelectPlace
+      selectedPlace.longitude
     ) {
       const newCenter = new kakao.maps.LatLng(
         selectedPlace.latitude,
         selectedPlace.longitude
       );
       map.panTo(newCenter);
-      map.setLevel(8);
     }
-  }, [map, selectedPlace, onSelectPlace]);
+  }, [map, selectedPlace]);
 
-  // 사고 데이터나 장소 데이터가 로드되면 지도의 경계를 재설정
-  useEffect(() => {
-    if (!map || (!places.length && !accidents.length)) return;
-
-    const bounds = new kakao.maps.LatLngBounds();
-
-    places.forEach((p) => {
-      if (p.latitude && p.longitude) {
-        bounds.extend(new kakao.maps.LatLng(p.latitude, p.longitude));
-      }
-    });
-
-    accidents.forEach((a) => {
-      if (a.lat && a.lon) {
-        bounds.extend(new kakao.maps.LatLng(a.lat, a.lon));
-      }
-    });
-
-    if (!bounds.isEmpty()) {
-      map.setBounds(bounds);
-    }
-  }, [map, places, accidents]);
+  const handleIdle = (mapInstance: kakao.maps.Map) => {
+    const newCenter = mapInstance.getCenter();
+    onMapIdle?.({ lat: newCenter.getLat(), lng: newCenter.getLng() });
+  };
 
   return (
     <Map
-      center={{ lat: 36.5, lng: 127.5 }}
+      center={center}
       style={{ width: "100%", height: "100%" }}
-      level={12}
+      level={8}
       onCreate={setMap}
       onClick={() => onSelectPlace && onSelectPlace(null)}
+      onIdle={handleIdle}
     >
       {/* 장소 마커 */}
       {places.map((place) => {

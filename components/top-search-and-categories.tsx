@@ -108,13 +108,10 @@ export default function TopSearchAndCategories({
     onCategorySelect?.(categoryId);
 
     if (categoryId === "accident_location") {
-      const result = await getAccidents();
-      if (result.success) {
-        onAccidentDataLoad?.(result.data);
-      } else {
-        console.error("Failed to fetch accident data:", result.error);
-        onAccidentDataLoad?.([]);
-      }
+      // 이제 사고 데이터는 지도 이동 시 로드되므로,
+      // 카테고리 클릭 시에는 모든 데이터를 불러오지 않습니다.
+      // 필요하다면 초기 위치 기반 로딩을 여기서 트리거할 수 있습니다.
+      // 예: onAccidentDataLoad?.([]);
     } else {
       // 다른 카테고리 선택 시 사고 데이터 초기화
       onAccidentDataLoad?.([]);
