@@ -11,6 +11,7 @@ import { Accident } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { LOCATION_TYPES } from "@/lib/constants";
 import AccidentOverlay from "./accident-overlay";
+import AccidentDetailModal from "./accident-detail-modal";
 
 const placeCategoryIds = ["tourist_spot", "festival"];
 const accidentCategoryId = "accident_location";
@@ -22,6 +23,7 @@ export default function IntegratedMapComponent() {
   const [selectedAccident, setSelectedAccident] = useState<Accident | null>(
     null
   );
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>("");
   const [currentCategories, setCurrentCategories] = useState<string[]>([
@@ -139,9 +141,11 @@ export default function IntegratedMapComponent() {
     setSelectedAccident(null);
   };
 
-  const handleSelectAccident = (accident: Accident) => {
+  const handleSelectAccident = (accident: Accident | null) => {
     setSelectedAccident(accident);
-    setSelectedPlace(null);
+    if (accident) {
+      setSelectedPlace(null);
+    }
   };
 
   const handleSelectPlaceFromList = (place: Place) => {
@@ -182,8 +186,15 @@ export default function IntegratedMapComponent() {
         <AccidentOverlay
           accident={selectedAccident}
           onClose={() => setSelectedAccident(null)}
+          onMoreInfo={() => setIsDetailModalOpen(true)}
         />
       )}
+
+      <AccidentDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        accident={selectedAccident}
+      />
 
       {showSearchButton && (
         <div className="absolute top-36 left-1/2 -translate-x-1/2 z-10">
