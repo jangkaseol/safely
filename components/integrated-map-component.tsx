@@ -10,8 +10,9 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { Accident } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { LOCATION_TYPES } from "@/lib/constants";
-import AccidentOverlay from "./accident-overlay"; // AccidentOverlay 컴포넌트 import
+import AccidentOverlay from "./accident-overlay";
 
+const placeCategoryIds = ["tourist_spot", "festival"];
 const accidentCategoryId = "accident_location";
 
 export default function IntegratedMapComponent() {
@@ -20,7 +21,7 @@ export default function IntegratedMapComponent() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [selectedAccident, setSelectedAccident] = useState<Accident | null>(
     null
-  ); // 선택된 사고 상태 추가
+  );
   const [loading, setLoading] = useState(true);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>("");
   const [currentCategories, setCurrentCategories] = useState<string[]>([
@@ -43,12 +44,11 @@ export default function IntegratedMapComponent() {
       setLoading(true);
 
       const placeCategoriesToFetch = categories
-        .filter((cat) =>
-          Object.keys(LOCATION_TYPES).some(
-            (key) => LOCATION_TYPES[key as keyof typeof LOCATION_TYPES] === cat
-          )
-        )
-        .map((cat) => LOCATION_TYPES[cat as keyof typeof LOCATION_TYPES]);
+        .filter((cat) => placeCategoryIds.includes(cat))
+        .map(
+          (cat) =>
+            LOCATION_TYPES[cat.toUpperCase() as keyof typeof LOCATION_TYPES]
+        );
 
       const shouldFetchAccidents = categories.includes(accidentCategoryId);
 
@@ -79,10 +79,6 @@ export default function IntegratedMapComponent() {
     []
   );
 
-  useEffect(() => {
-    // 초기 로드
-  }, []);
-
   const handleSearch = (query: string) => {
     setCurrentSearchQuery(query);
     setSelectedPlace(null);
@@ -93,6 +89,7 @@ export default function IntegratedMapComponent() {
   const handleCategorySelect = (categories: string[]) => {
     setCurrentCategories(categories);
     setSelectedPlace(null);
+    setSelectedAccident(null);
     setCurrentSearchQuery("");
     loadData(categories, mapCenter);
   };
@@ -139,12 +136,12 @@ export default function IntegratedMapComponent() {
 
   const handleSelectPlace = (place: Place | null) => {
     setSelectedPlace(place);
-    setSelectedAccident(null); // 장소 선택 시 사고 오버레이는 닫음
+    setSelectedAccident(null);
   };
 
   const handleSelectAccident = (accident: Accident) => {
     setSelectedAccident(accident);
-    setSelectedPlace(null); // 사고 선택 시 장소 오버레이는 닫음
+    setSelectedPlace(null);
   };
 
   const handleSelectPlaceFromList = (place: Place) => {
