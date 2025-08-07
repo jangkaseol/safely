@@ -81,7 +81,7 @@ function transformPlaceData(
     longitude: location.longitude,
     description: location.description,
     image_url: location.image_url,
-    category: location.category,
+    category: location.type,
     period_start: location.start_date,
     period_end: location.end_date,
     created_at: location.created_at,
@@ -100,15 +100,15 @@ function transformPlaceData(
   };
 }
 
-export async function getPlaces(category?: string, searchQuery?: string) {
+export async function getPlaces(categories?: string[], searchQuery?: string) {
   try {
     let query = supabaseServer
       .from("locations")
       .select("*, location_details(*)") // locations 테이블과 location_details 테이블을 조인하여 모든 컬럼 선택
       .order("created_at", { ascending: false });
 
-    if (category && category !== "all") {
-      query = query.eq("category", category);
+    if (categories && categories.length > 0) {
+      query = query.in("type", categories); // 'type' 필드를 기준으로 여러 카테고리 필터링
     }
 
     if (searchQuery) {

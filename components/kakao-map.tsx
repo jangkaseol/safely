@@ -19,7 +19,7 @@ interface KakaoMapProps {
   accidents?: Accident[];
   selectedPlace?: Place | null;
   onSelectPlace?: (place: Place | null) => void;
-  onMapIdle?: (center: { lat: number; lng: number }) => void;
+  onMapMove?: (center: { lat: number; lng: number }) => void;
   center?: { lat: number; lng: number };
 }
 
@@ -53,7 +53,7 @@ export default function KakaoMap({
   accidents = [],
   selectedPlace,
   onSelectPlace,
-  onMapIdle,
+  onMapMove,
   center = { lat: 36.5, lng: 127.5 },
 }: KakaoMapProps) {
   const [map, setMap] = useState<kakao.maps.Map>();
@@ -80,11 +80,6 @@ export default function KakaoMap({
     }
   }, [map, selectedPlace]);
 
-  const handleIdle = (mapInstance: kakao.maps.Map) => {
-    const newCenter = mapInstance.getCenter();
-    onMapIdle?.({ lat: newCenter.getLat(), lng: newCenter.getLng() });
-  };
-
   return (
     <Map
       center={center}
@@ -92,7 +87,18 @@ export default function KakaoMap({
       level={8}
       onCreate={setMap}
       onClick={() => onSelectPlace && onSelectPlace(null)}
-      onIdle={handleIdle}
+      onDragEnd={(map) =>
+        onMapMove?.({
+          lat: map.getCenter().getLat(),
+          lng: map.getCenter().getLng(),
+        })
+      }
+      onZoomChanged={(map) =>
+        onMapMove?.({
+          lat: map.getCenter().getLat(),
+          lng: map.getCenter().getLng(),
+        })
+      }
     >
       {/* 장소 마커 */}
       {places.map((place) => {

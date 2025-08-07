@@ -5,22 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Menu, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { searchPlaceNames, getAccidents } from "@/app/actions/places";
-import { Accident } from "@/lib/types";
+import { searchPlaceNames } from "@/app/actions/places";
 
-// 고정된 카테고리 목록 정의
+// 변경된 카테고리 목록 정의
 const staticCategories = [
-  { id: "all", name: "전체", isAccident: false },
-  { id: "accident_location", name: "사고 위치", isAccident: true },
-  { id: "tourist_spot", name: "관광지", isAccident: false },
-  { id: "festival", name: "축제", isAccident: false },
+  { id: "all", name: "전체" },
+  { id: "tourist_spot", name: "관광지" },
+  { id: "festival", name: "축제" },
+  { id: "accident_location", name: "사고 위치" },
 ];
+
+const placeCategoryIds = ["tourist_spot", "festival"];
+const accidentCategoryId = "accident_location";
 
 interface TopSearchAndCategoriesProps {
   onSearch?: (query: string) => void;
-  onCategorySelect?: (category: string) => void;
-  onFocusChange?: (focused: boolean) => void; // 포커스 변경 콜백 추가
-  onAccidentDataLoad?: (data: Accident[]) => void;
+  onCategorySelect?: (categories: string[]) => void;
+  onFocusChange?: (focused: boolean) => void;
 }
 
 interface SearchSuggestion {
@@ -33,32 +34,28 @@ export default function TopSearchAndCategories({
   onSearch,
   onCategorySelect,
   onFocusChange,
-  onAccidentDataLoad,
 }: TopSearchAndCategoriesProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categories] = useState(staticCategories);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 포커스 상태 변경 시 부모에게 알림
   useEffect(() => {
     onFocusChange?.(isInputFocused);
   }, [isInputFocused, onFocusChange]);
 
-  // 실시간 검색 자동완성
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.trim().length === 0) {
       setSuggestions([]);
       return;
     }
-
     try {
       const result = await searchPlaceNames(query, 5);
       if (result.success) {
-        setSuggestions(result.data);
+        setSuggestions(result.data as any);
       }
     } catch (error) {
       console.error("Error fetching suggestions:", error);
@@ -66,16 +63,13 @@ export default function TopSearchAndCategories({
     }
   }, []);
 
-  // 검색어 변경 시 자동완성 실행
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchSuggestions(searchQuery);
     }, 150);
-
     return () => clearTimeout(timeoutId);
   }, [searchQuery, fetchSuggestions]);
 
-  // 외부 클릭 감지
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -85,16 +79,14 @@ export default function TopSearchAndCategories({
         setIsInputFocused(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleSearch = (query?: string) => {
     const searchTerm = query || searchQuery;
-    console.log("검색:", searchTerm);
     onSearch?.(searchTerm);
-    setIsInputFocused(false); // 검색 후 포커스 해제
+    setIsInputFocused(false);
     inputRef.current?.blur();
   };
 
@@ -103,19 +95,29 @@ export default function TopSearchAndCategories({
     handleSearch(suggestion.name);
   };
 
-  const handleCategoryClick = async (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    onCategorySelect?.(categoryId);
+  const handleCategoryClick = (categoryId: string) => {
+    let newSelectedCategories: string[];
 
-    if (categoryId === "accident_location") {
-      // 이제 사고 데이터는 지도 이동 시 로드되므로,
-      // 카테고리 클릭 시에는 모든 데이터를 불러오지 않습니다.
-      // 필요하다면 초기 위치 기반 로딩을 여기서 트리거할 수 있습니다.
-      // 예: onAccidentDataLoad?.([]);
+    if (categoryId === "all") {
+      const allCategoryIds = [...placeCategoryIds, accidentCategoryId];
+      // 모든 카테고리가 이미 선택되어 있는지 확인
+      const areAllSelected =
+        allCategoryIds.every((id) => selectedCategories.includes(id)) &&
+        selectedCategories.length === allCategoryIds.length;
+
+      newSelectedCategories = areAllSelected ? [] : allCategoryIds;
     } else {
-      // 다른 카테고리 선택 시 사고 데이터 초기화
-      onAccidentDataLoad?.([]);
+      if (selectedCategories.includes(categoryId)) {
+        newSelectedCategories = selectedCategories.filter(
+          (id) => id !== categoryId
+        );
+      } else {
+        newSelectedCategories = [...selectedCategories, categoryId];
+      }
     }
+
+    setSelectedCategories(newSelectedCategories);
+    onCategorySelect?.(newSelectedCategories);
   };
 
   const handleInputFocus = () => {
@@ -123,7 +125,6 @@ export default function TopSearchAndCategories({
   };
 
   const handleInputBlur = () => {
-    // 약간의 지연을 두어 자동완성 클릭이 가능하도록 함
     setTimeout(() => {
       if (
         containerRef.current &&
@@ -162,7 +163,6 @@ export default function TopSearchAndCategories({
           <Mic className="w-5 h-5 text-gray-600" />
         </div>
 
-        {/* 자동완성 드롭다운 - 포커스가 있고 검색어가 있고 결과가 있을 때만 표시 */}
         {isInputFocused &&
           searchQuery.trim().length > 0 &&
           suggestions.length > 0 && (
@@ -171,7 +171,7 @@ export default function TopSearchAndCategories({
                 <div
                   key={suggestion.id}
                   className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                  onMouseDown={(e) => e.preventDefault()} // 클릭 시 blur 방지
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSuggestionClick(suggestion)}
                 >
                   <div className="font-medium text-gray-900">
@@ -186,24 +186,35 @@ export default function TopSearchAndCategories({
           )}
       </div>
 
-      {/* 카테고리 필터 - 포커스가 있을 때만 표시 */}
       {isInputFocused && (
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {categories.map((category) => (
-            <Button
-              key={category.id}
-              className={cn(
-                "rounded-full whitespace-nowrap shadow-sm",
-                selectedCategory === category.id
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              )}
-              onMouseDown={(e) => e.preventDefault()} // 클릭 시 blur 방지
-              onClick={() => handleCategoryClick(category.id)}
-            >
-              {category.name}
-            </Button>
-          ))}
+          {categories.map((category) => {
+            const allCategoryIds = [...placeCategoryIds, accidentCategoryId];
+            const areAllSelected =
+              allCategoryIds.every((id) => selectedCategories.includes(id)) &&
+              selectedCategories.length === allCategoryIds.length;
+            const isSelected =
+              selectedCategories.includes(category.id) ||
+              (category.id === "all" && areAllSelected);
+
+            return (
+              <Button
+                key={category.id}
+                className={cn(
+                  "rounded-full whitespace-nowrap shadow-sm",
+                  isSelected
+                    ? category.id === accidentCategoryId
+                      ? "bg-red-500 text-white hover:bg-red-600"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                )}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleCategoryClick(category.id)}
+              >
+                {category.name}
+              </Button>
+            );
+          })}
         </div>
       )}
     </div>

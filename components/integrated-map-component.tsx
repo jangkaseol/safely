@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Star } from "lucide-react";
+import { MapPin, Star, RefreshCw } from "lucide-react";
 import TopSearchAndCategories from "@/components/top-search-and-categories";
 import PlaceDetailBottomSheet from "@/components/place-detail-bottom-sheet";
 import KakaoMap from "@/components/kakao-map";
@@ -8,6 +8,10 @@ import { useState, useEffect, useCallback } from "react";
 import { getPlaces, getAccidents, type Place } from "@/app/actions/places";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { Accident } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { LOCATION_TYPES } from "@/lib/constants";
+
+const accidentCategoryId = "accident_location";
 
 export default function IntegratedMapComponent() {
   const [places, setPlaces] = useState<Place[]>([]);
@@ -15,85 +19,92 @@ export default function IntegratedMapComponent() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>("");
-  const [currentCategory, setCurrentCategory] = useState<string>("all");
+  const [currentCategories, setCurrentCategories] = useState<string[]>([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({
     lat: 36.5,
     lng: 127.5,
   });
+  const [showSearchButton, setShowSearchButton] = useState(false);
 
-  const loadPlaces = useCallback(
-    async (category?: string, searchQuery?: string) => {
+  const loadData = useCallback(
+    async (
+      categories: string[],
+      center: { lat: number; lng: number },
+      searchQuery?: string
+    ) => {
       setLoading(true);
-      if (category !== "accident_location") {
-        const result = await getPlaces(category, searchQuery);
-        if (result.success) {
-          setPlaces(result.data);
-        }
-        setAccidents([]);
-      } else {
-        setPlaces([]);
-        // 사고 위치 카테고리 선택 시, 현재 지도 중심으로 사고 데이터 로드
-        await loadAccidents(mapCenter.lat, mapCenter.lng);
+
+      // 프론트엔드 id를 DB의 실제 값으로 변환
+      const placeCategoriesToFetch = categories
+        .filter((cat) =>
+          Object.keys(LOCATION_TYPES).includes(cat.toUpperCase())
+        )
+        .map(
+          (cat) =>
+            LOCATION_TYPES[cat.toUpperCase() as keyof typeof LOCATION_TYPES]
+        );
+
+      const shouldFetchAccidents = categories.includes(accidentCategoryId);
+
+      const placesPromise =
+        placeCategoriesToFetch.length > 0
+          ? getPlaces(placeCategoriesToFetch, searchQuery)
+          : Promise.resolve({ success: true, data: [] });
+
+      const accidentsPromise = shouldFetchAccidents
+        ? getAccidents(String(center.lat), String(center.lng), "5000")
+        : Promise.resolve({ success: true, data: [] });
+
+      const [placesResult, accidentsResult] = await Promise.all([
+        placesPromise,
+        accidentsPromise,
+      ]);
+
+      if (placesResult.success) {
+        setPlaces(placesResult.data);
       }
+      if (accidentsResult.success) {
+        setAccidents(accidentsResult.data);
+      }
+
       setLoading(false);
+      setShowSearchButton(false);
     },
-    [mapCenter.lat, mapCenter.lng]
+    []
   );
 
-  const loadAccidents = async (lat: number, lon: number) => {
-    setLoading(true);
-    const result = await getAccidents(String(lat), String(lon), "5000"); // 5km 반경
-    if (result.success) {
-      setAccidents(result.data);
-    } else {
-      console.error("Failed to fetch accident data:", result.error);
-    }
-    setLoading(false);
-  };
-
   useEffect(() => {
-    loadPlaces(
-      currentCategory === "all" ? undefined : currentCategory,
-      currentSearchQuery
-    );
-  }, [loadPlaces, currentCategory, currentSearchQuery]);
+    // 초기 로드
+  }, []);
 
   const handleSearch = (query: string) => {
     setCurrentSearchQuery(query);
     setSelectedPlace(null);
-    setCurrentCategory("all");
+    setCurrentCategories([]);
+    loadData([], mapCenter, query);
   };
 
-  const handleCategorySelect = (category: string) => {
-    setCurrentCategory(category);
+  const handleCategorySelect = (categories: string[]) => {
+    setCurrentCategories(categories);
     setSelectedPlace(null);
     setCurrentSearchQuery("");
-    if (category === "accident_location") {
-      loadAccidents(mapCenter.lat, mapCenter.lng);
-    } else {
-      setAccidents([]);
-    }
+    loadData(categories, mapCenter);
   };
 
-  const handleAccidentDataLoad = (data: Accident[]) => {
-    setLoading(true);
-    setAccidents(data);
-    setPlaces([]);
-    setLoading(false);
-  };
-
-  const handleMapIdle = useCallback(
+  const handleMapMove = useCallback(
     (newCenter: { lat: number; lng: number }) => {
       setMapCenter(newCenter);
-      if (currentCategory === "accident_location") {
-        loadAccidents(newCenter.lat, newCenter.lng);
-      }
+      setShowSearchButton(true);
     },
-    [currentCategory]
+    []
   );
 
-  const goToCurrentUserLocation = () => {
+  const handleSearchInMap = () => {
+    loadData(currentCategories, mapCenter, currentSearchQuery);
+  };
+
+  const goToCurrentUserLocation = useCallback(() => {
     if (navigator.geolocation) {
       setLoading(true);
       navigator.geolocation.getCurrentPosition(
@@ -103,9 +114,7 @@ export default function IntegratedMapComponent() {
             lng: position.coords.longitude,
           };
           setMapCenter(newCenter);
-          if (currentCategory === "accident_location") {
-            loadAccidents(newCenter.lat, newCenter.lng);
-          }
+          loadData(currentCategories, newCenter, currentSearchQuery);
           setLoading(false);
         },
         (error) => {
@@ -117,7 +126,11 @@ export default function IntegratedMapComponent() {
     } else {
       alert("이 브라우저에서는 위치 정보가 지원되지 않습니다.");
     }
-  };
+  }, [currentCategories, currentSearchQuery, loadData]);
+
+  useEffect(() => {
+    goToCurrentUserLocation();
+  }, [goToCurrentUserLocation]);
 
   const handleSelectPlace = (place: Place | null) => {
     setSelectedPlace(place);
@@ -139,11 +152,6 @@ export default function IntegratedMapComponent() {
     setIsSearchFocused(focused);
   };
 
-  useEffect(() => {
-    goToCurrentUserLocation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <div className="absolute inset-0">
       <KakaoMap
@@ -151,7 +159,7 @@ export default function IntegratedMapComponent() {
         accidents={accidents}
         selectedPlace={selectedPlace}
         onSelectPlace={handleSelectPlace}
-        onMapIdle={handleMapIdle}
+        onMapMove={handleMapMove}
         center={mapCenter}
       />
 
@@ -161,12 +169,22 @@ export default function IntegratedMapComponent() {
         </div>
       )}
 
+      {showSearchButton && (
+        <div className="absolute top-36 left-1/2 -translate-x-1/2 z-10">
+          <Button
+            onClick={handleSearchInMap}
+            className="rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" /> 현 지도에서 검색
+          </Button>
+        </div>
+      )}
+
       <div className="absolute top-0 left-0 right-0 z-10 p-4">
         <TopSearchAndCategories
           onSearch={handleSearch}
           onCategorySelect={handleCategorySelect}
           onFocusChange={handleSearchFocusChange}
-          onAccidentDataLoad={handleAccidentDataLoad}
         />
       </div>
 
