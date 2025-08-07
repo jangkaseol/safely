@@ -19,6 +19,7 @@ interface KakaoMapProps {
   accidents?: Accident[];
   selectedPlace?: Place | null;
   onSelectPlace?: (place: Place | null) => void;
+  onSelectAccident?: (accident: Accident) => void;
   onMapMove?: (center: { lat: number; lng: number }) => void;
   center?: { lat: number; lng: number };
 }
@@ -53,6 +54,7 @@ export default function KakaoMap({
   accidents = [],
   selectedPlace,
   onSelectPlace,
+  onSelectAccident,
   onMapMove,
   center = { lat: 36.5, lng: 127.5 },
 }: KakaoMapProps) {
@@ -137,7 +139,7 @@ export default function KakaoMap({
               options: { offset: { x: MARKER_SIZE / 2, y: MARKER_SIZE / 2 } },
             }}
             title={accident.accident_type || "사고"}
-            // 사고 마커 클릭 시 이벤트 핸들러 (필요시 구현)
+            onClick={() => onSelectAccident && onSelectAccident(accident)}
           />
         );
       })}

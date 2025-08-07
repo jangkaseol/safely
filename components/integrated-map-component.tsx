@@ -10,6 +10,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { Accident } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { LOCATION_TYPES } from "@/lib/constants";
+import AccidentOverlay from "./accident-overlay"; // AccidentOverlay 컴포넌트 import
 
 const accidentCategoryId = "accident_location";
 
@@ -17,6 +18,9 @@ export default function IntegratedMapComponent() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [accidents, setAccidents] = useState<Accident[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [selectedAccident, setSelectedAccident] = useState<Accident | null>(
+    null
+  ); // 선택된 사고 상태 추가
   const [loading, setLoading] = useState(true);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>("");
   const [currentCategories, setCurrentCategories] = useState<string[]>([
@@ -38,15 +42,13 @@ export default function IntegratedMapComponent() {
     ) => {
       setLoading(true);
 
-      // 프론트엔드 id를 DB의 실제 값으로 변환
       const placeCategoriesToFetch = categories
         .filter((cat) =>
-          Object.keys(LOCATION_TYPES).includes(cat.toUpperCase())
+          Object.keys(LOCATION_TYPES).some(
+            (key) => LOCATION_TYPES[key as keyof typeof LOCATION_TYPES] === cat
+          )
         )
-        .map(
-          (cat) =>
-            LOCATION_TYPES[cat.toUpperCase() as keyof typeof LOCATION_TYPES]
-        );
+        .map((cat) => LOCATION_TYPES[cat as keyof typeof LOCATION_TYPES]);
 
       const shouldFetchAccidents = categories.includes(accidentCategoryId);
 
@@ -137,6 +139,12 @@ export default function IntegratedMapComponent() {
 
   const handleSelectPlace = (place: Place | null) => {
     setSelectedPlace(place);
+    setSelectedAccident(null); // 장소 선택 시 사고 오버레이는 닫음
+  };
+
+  const handleSelectAccident = (accident: Accident) => {
+    setSelectedAccident(accident);
+    setSelectedPlace(null); // 사고 선택 시 장소 오버레이는 닫음
   };
 
   const handleSelectPlaceFromList = (place: Place) => {
@@ -162,6 +170,7 @@ export default function IntegratedMapComponent() {
         accidents={accidents}
         selectedPlace={selectedPlace}
         onSelectPlace={handleSelectPlace}
+        onSelectAccident={handleSelectAccident}
         onMapMove={handleMapMove}
         center={mapCenter}
       />
@@ -170,6 +179,13 @@ export default function IntegratedMapComponent() {
         <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-30">
           <LoadingSpinner />
         </div>
+      )}
+
+      {selectedAccident && (
+        <AccidentOverlay
+          accident={selectedAccident}
+          onClose={() => setSelectedAccident(null)}
+        />
       )}
 
       {showSearchButton && (
