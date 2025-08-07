@@ -2,7 +2,19 @@
 
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MapPin, Star, Calendar, Users, ChevronLeft, Plus } from "lucide-react";
+import {
+  MapPin,
+  Star,
+  Calendar,
+  Users,
+  ChevronLeft,
+  Plus,
+  FileText,
+  AlertTriangle,
+  Phone,
+  BookOpen,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -61,6 +73,11 @@ export default function PlaceDetailBottomSheet({
   const initialSheetHeight = useRef(0);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isRegisterSheetOpen, setIsRegisterSheetOpen] = useState(false);
+  const [activeToggle, setActiveToggle] = useState<
+    "details" | "cases" | "none"
+  >("none");
+  const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
+  const [showCitations, setShowCitations] = useState(false);
 
   const minHeight = 80;
   const midHeight =
@@ -174,6 +191,32 @@ export default function PlaceDetailBottomSheet({
       }
     : null;
 
+  const analysisSections =
+    placeInfo?.aiAnalysisContent
+      .split("---")
+      .map((s) => s.trim())
+      .filter(Boolean) || [];
+
+  const [
+    greeting,
+    coreRules,
+    detailedGuide,
+    emergencyContacts,
+    similarCases,
+    closing,
+  ] = analysisSections;
+
+  const renderSection = (content: string | undefined) => {
+    if (!content) return null;
+    return (
+      <MarkdownRenderer
+        content={content}
+        citedChunks={citedChunks || undefined}
+        showCitationList={false}
+      />
+    );
+  };
+
   const handleRegisterNewPlace = () => {
     setIsRegisterSheetOpen(true);
   };
@@ -255,20 +298,144 @@ export default function PlaceDetailBottomSheet({
                 </div>
 
                 <Accordion type="single" collapsible defaultValue="item-1">
-                  <AccordionItem value="item-1">
+                  <AccordionItem value="item-1" className="border-b-0">
                     <AccordionTrigger className="text-lg font-semibold py-3">
                       AI 안전 분석
                     </AccordionTrigger>
                     <AccordionContent className="pt-2 pb-0">
                       {placeInfo.aiAnalysisTitle && (
-                        <h4 className="text-xl font-bold mb-2">
+                        <h4 className="text-xl font-bold mb-4 text-center">
                           {placeInfo.aiAnalysisTitle}
                         </h4>
                       )}
-                      <MarkdownRenderer
-                        content={placeInfo.aiAnalysisContent}
-                        citedChunks={citedChunks || undefined}
-                      />
+
+                      {analysisSections.length >= 6 ? (
+                        <div className="space-y-4">
+                          {/* 인사말 */}
+                          <div className="p-4 bg-blue-50 rounded-lg">
+                            {renderSection(greeting)}
+                          </div>
+
+                          {/* 핵심 안전수칙 */}
+                          <div className="p-4 border rounded-lg">
+                            {renderSection(coreRules)}
+                          </div>
+
+                          {/* 상세 안내 및 유사 사례 토글 버튼 */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <Button
+                              onClick={() =>
+                                setActiveToggle(
+                                  activeToggle === "details"
+                                    ? "none"
+                                    : "details"
+                                )
+                              }
+                              variant="outline"
+                              className="w-full justify-between items-center h-12 bg-gray-50 hover:bg-gray-100"
+                            >
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-blue-600" />
+                                <span className="font-semibold">상세 안내</span>
+                              </div>
+                              <ChevronDown
+                                className={`w-5 h-5 transition-transform ${
+                                  activeToggle === "details" ? "rotate-180" : ""
+                                }`}
+                              />
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                setActiveToggle(
+                                  activeToggle === "cases" ? "none" : "cases"
+                                )
+                              }
+                              variant="outline"
+                              className="w-full justify-between items-center h-12 bg-gray-50 hover:bg-gray-100"
+                            >
+                              <div className="flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-red-600" />
+                                <span className="font-semibold">
+                                  유사 사고 사례
+                                </span>
+                              </div>
+                              <ChevronDown
+                                className={`w-5 h-5 transition-transform ${
+                                  activeToggle === "cases" ? "rotate-180" : ""
+                                }`}
+                              />
+                            </Button>
+                          </div>
+
+                          {/* 상세 안내 내용 */}
+                          {activeToggle === "details" && (
+                            <div className="p-4 border rounded-lg animate-in fade-in-50 slide-in-from-top-2 duration-300">
+                              {renderSection(detailedGuide)}
+                            </div>
+                          )}
+
+                          {/* 유사 사례 내용 */}
+                          {activeToggle === "cases" && (
+                            <div className="p-4 border rounded-lg animate-in fade-in-50 slide-in-from-top-2 duration-300">
+                              {renderSection(similarCases)}
+                            </div>
+                          )}
+
+                          {/* 비상 연락망 토글 아래로 이동 */}
+                          <Accordion
+                            type="single"
+                            collapsible
+                            className="w-full"
+                            onValueChange={(value) =>
+                              setShowEmergencyContacts(!!value)
+                            }
+                          >
+                            <AccordionItem value="emergency">
+                              <AccordionTrigger className="font-semibold text-base flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+                                <Phone className="w-5 h-5 text-green-600" />
+                                <span>비상 연락망</span>
+                              </AccordionTrigger>
+                              <AccordionContent className="p-4 border rounded-lg mt-2">
+                                {renderSection(emergencyContacts)}
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+
+                          {/* 감사 인사말 */}
+                          <div className="p-4 bg-green-50 rounded-lg">
+                            {renderSection(closing)}
+                          </div>
+
+                          {/* 참고자료 보기 버튼 */}
+                          <div className="text-center pt-4">
+                            <Button
+                              onClick={() => setShowCitations(!showCitations)}
+                              variant="link"
+                            >
+                              <BookOpen className="w-4 h-4 mr-2" />
+                              {showCitations
+                                ? "참고자료 숨기기"
+                                : "참고자료 보기"}
+                            </Button>
+                          </div>
+
+                          {/* 참고자료 내용 */}
+                          {showCitations && (
+                            <div className="mt-2 p-4 border rounded-lg bg-gray-50 animate-in fade-in-50">
+                              <MarkdownRenderer
+                                content=""
+                                citedChunks={citedChunks || undefined}
+                                showCitationList={true}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <MarkdownRenderer
+                          content={placeInfo.aiAnalysisContent}
+                          citedChunks={citedChunks || undefined}
+                        />
+                      )}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>

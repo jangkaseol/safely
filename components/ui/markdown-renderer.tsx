@@ -122,11 +122,13 @@ const processChildrenForCitations = (
 interface MarkdownRendererProps {
   content: string;
   citedChunks?: HalluCitedChunk[];
+  showCitationList?: boolean;
 }
 
 export default function MarkdownRenderer({
   content,
   citedChunks,
+  showCitationList = true,
 }: MarkdownRendererProps) {
   const customComponents = {
     h1: ({
@@ -211,10 +213,11 @@ export default function MarkdownRenderer({
     <div className="prose max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        components={customComponents as Components}>
+        components={customComponents as Components}
+      >
         {content}
       </ReactMarkdown>
-      {citedChunks && citedChunks.length > 0 && (
+      {showCitationList && citedChunks && citedChunks.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
           <h3 className="text-sm font-semibold">참고 자료:</h3>
           {citedChunks.map((chunk, index) => {
