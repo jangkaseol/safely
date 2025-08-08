@@ -6,6 +6,21 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { locationData, aiRequest } = body;
+    console.log("Received aiRequest:", JSON.stringify(aiRequest, null, 2));
+
+    const aiRequestForServer = { ...aiRequest };
+    if (
+      aiRequestForServer.related_documents &&
+      Array.isArray(aiRequestForServer.related_documents) &&
+      aiRequestForServer.related_documents.length > 0
+    ) {
+      // "string 형태로" 보내기 위해 첫 번째 파일의 내용만 추출
+      aiRequestForServer.related_documents =
+        aiRequestForServer.related_documents[0].file_content;
+    } else if ("related_documents" in aiRequestForServer) {
+      // related_documents가 있지만 비어있는 경우 필드 자체를 제거
+      delete aiRequestForServer.related_documents;
+    }
 
     // custom_form 전용 외부 API URL
     const custom_form_url = "http://203.237.81.58:25723/api/custom_form";
@@ -16,7 +31,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(aiRequest), // 프론트에서 받은 aiRequest를 그대로 전달
+      body: JSON.stringify(aiRequestForServer), // 프론트에서 받은 aiRequest를 그대로 전달
     });
 
     if (!response.ok) {

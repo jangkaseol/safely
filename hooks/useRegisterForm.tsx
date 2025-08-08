@@ -175,7 +175,6 @@ export function useRegisterForm() {
       reader.readAsDataURL(file);
       reader.onload = () => {
         const result = reader.result as string;
-        // "data:*/*;base64," 부분을 제거합니다.
         const base64 = result.split(",")[1];
         resolve(base64);
       };
@@ -184,19 +183,32 @@ export function useRegisterForm() {
   };
 
   const handleSubmit = useCallback(async () => {
+    const { name, type, location } = locationData;
+    if (!name || !type || !location) {
+      toast.error("이름/명칭, 유형, 상세 위치는 필수 입력 항목입니다.");
+      return;
+    }
+
+    if (periodType === "period" && (!dateRange?.from || !dateRange?.to)) {
+      toast.error("기간을 선택해주세요.");
+      return;
+    }
+
     startTransition(async () => {
       try {
         toast.info(
           "새로운 장소 등록 및 AI 분석을 시작합니다. 최대 1분까지 소요될 수 있습니다."
         );
 
-        // 외부 API는 단일 파일의 Base64 문자열을 기대합니다.
-        // 업로드된 파일(첨부파일 또는 대표 이미지) 중 첫 번째 파일 하나만 선택합니다.
-        let relatedDocumentsBase64 = "";
-        const fileToUpload = dataFiles[0]?.file || imageFile;
+        let imageUrl: string | null = null;
+        if (imageFile) {
+          const uploadedImage = await uploadFile(imageFile);
+          imageUrl = uploadedImage.url;
+        }
 
-        if (fileToUpload) {
-          relatedDocumentsBase64 = await fileToBase64(fileToUpload);
+        let relatedDocumentsBase64 = "";
+        if (dataFiles.length > 0 && dataFiles[0].file) {
+          relatedDocumentsBase64 = await fileToBase64(dataFiles[0].file);
         }
 
         const period =
@@ -210,44 +222,49 @@ export function useRegisterForm() {
 
         const mainEmergencyContact = emergencyContacts[0] || {};
 
-        const finalLocationData = { ...locationData };
-        if (!finalLocationData.location) {
-          finalLocationData.location = "서울 서초구 고무래로 89";
-          finalLocationData.latitude = 37.5113;
-          finalLocationData.longitude = 127.0206;
-        }
-        const payload = {
-          place_name: finalLocationData.name || "",
-          type: finalLocationData.type || "",
-          location: finalLocationData.location,
-          latitude: finalLocationData.latitude,
-          longitude: finalLocationData.longitude,
+        const dbLocationData = {
+          name: locationData.name,
+          location: locationData.location,
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          type: locationData.type,
+          description: locationData.description,
+          image_url: imageUrl,
+          category: locationData.category,
+          status: locationData.status,
+          expected_attendees: locationData.expected_attendees,
+          emergency_contacts: emergencyContacts,
+          start_date:
+            periodType === "period" && dateRange?.from
+              ? format(dateRange.from, "yyyy-MM-dd")
+              : null,
+          end_date:
+            periodType === "period" && dateRange?.to
+              ? format(dateRange.to, "yyyy-MM-dd")
+              : null,
+          start_time: locationData.start_time,
+          end_time: locationData.end_time,
+        };
+
+        const aiPayload = {
+          place_name: locationData.name || "",
+          type: locationData.type || "",
+          location: locationData.location,
           period: period,
-          description: finalLocationData.description || "",
-          category: finalLocationData.category || "",
+          description: locationData.description || "",
+          category: locationData.category || "",
           related_documents: relatedDocumentsBase64,
           emergency_contact_name: mainEmergencyContact.name || "",
           emergency_contact_phone: mainEmergencyContact.contact_number || "",
-          expected_attendees: finalLocationData.expected_attendees || "",
+          expected_attendees: locationData.expected_attendees || "",
         };
 
         const response = await fetch("/api/custom_form", {
-          // custom_form으로 수정
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            locationData: {
-              ...finalLocationData,
-              start_date:
-                periodType === "period" && dateRange?.from
-                  ? format(dateRange.from, "yyyy-MM-dd")
-                  : null,
-              end_date:
-                periodType === "period" && dateRange?.to
-                  ? format(dateRange.to, "yyyy-MM-dd")
-                  : null,
-            },
-            aiRequest: payload,
+            locationData: dbLocationData,
+            aiRequest: aiPayload,
           }),
         });
 
