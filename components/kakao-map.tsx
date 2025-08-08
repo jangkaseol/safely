@@ -42,7 +42,7 @@ const getMarkerImageInfo = (
   }
 
   if (category === LOCATION_TYPES.FESTIVAL) {
-    return { src: "/firecracker.svg" };
+    return { src: "/firecracker.png" };
   }
 
   // 기본 마커 (별 모양)
