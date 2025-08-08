@@ -97,7 +97,6 @@ export default function RegisterForm() {
                   placeholder="여행지 또는 축제 이름"
                   value={locationData.name}
                   onChange={handleInputChange}
-                  required
                 />
               </div>
               <div className="space-y-2 sm:col-span-1">
@@ -110,7 +109,6 @@ export default function RegisterForm() {
                       target: { name: "type", value },
                     } as any)
                   }
-                  required
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="유형 선택" />
@@ -136,7 +134,6 @@ export default function RegisterForm() {
                     placeholder="주소 검색 버튼을 클릭하세요"
                     value={locationData.location}
                     readOnly
-                    required
                     className="flex-grow"
                   />
                   <AddressSearch onComplete={handleAddressComplete} />
@@ -260,7 +257,6 @@ export default function RegisterForm() {
                 rows={5}
                 value={locationData.description ?? ""}
                 onChange={handleInputChange}
-                required
               />
             </div>
 
