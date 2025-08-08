@@ -11,13 +11,20 @@ import {
   Plus,
   FileText,
   AlertTriangle,
+  CloudRain,
   Phone,
   BookOpen,
-  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import {
   Accordion,
   AccordionItem,
@@ -74,7 +81,7 @@ export default function PlaceDetailBottomSheet({
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isRegisterSheetOpen, setIsRegisterSheetOpen] = useState(false);
   const [activeToggle, setActiveToggle] = useState<
-    "details" | "cases" | "none"
+    "details" | "cases" | "weather" | "none"
   >("none");
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
   const [showCitations, setShowCitations] = useState(false);
@@ -203,6 +210,7 @@ export default function PlaceDetailBottomSheet({
     detailedGuide,
     emergencyContacts,
     similarCases,
+    weatherCaution,
     closing,
   ] = analysisSections;
 
@@ -215,6 +223,16 @@ export default function PlaceDetailBottomSheet({
         showCitationList={false}
       />
     );
+  };
+
+  const handleToggleChange = (value: string) => {
+    if (!value || value === activeToggle) {
+      setActiveToggle("none");
+      return;
+    }
+    if (value === "details" || value === "cases" || value === "weather") {
+      setActiveToggle(value);
+    }
   };
 
   const handleRegisterNewPlace = () => {
@@ -236,13 +254,11 @@ export default function PlaceDetailBottomSheet({
           "transition-transform duration-300 ease-out",
           isDragging && "transition-none"
         )}
-        style={{ height: `${height}px` }}
-      >
+        style={{ height: `${height}px` }}>
         <div
           className="flex justify-center py-3 cursor-grab active:cursor-grabbing touch-none"
           onMouseDown={handleStart}
-          onTouchStart={handleStart}
-        >
+          onTouchStart={handleStart}>
           <div className="w-12 h-1 bg-gray-300 rounded-full" />
         </div>
 
@@ -255,8 +271,7 @@ export default function PlaceDetailBottomSheet({
                     variant="ghost"
                     size="icon"
                     onClick={onBackToList}
-                    className="-ml-2"
-                  >
+                    className="-ml-2">
                     <ChevronLeft className="w-6 h-6" />
                   </Button>
                   <h2 className="text-2xl font-bold flex-1 text-center pr-8">
@@ -295,13 +310,7 @@ export default function PlaceDetailBottomSheet({
                       AI 안전 분석
                     </AccordionTrigger>
                     <AccordionContent className="pt-2 pb-0">
-                      {placeInfo.aiAnalysisTitle && (
-                        <h4 className="text-xl font-bold mb-4 text-center">
-                          {placeInfo.aiAnalysisTitle}
-                        </h4>
-                      )}
-
-                      {analysisSections.length >= 6 ? (
+                      {analysisSections.length >= 7 ? (
                         <div className="space-y-4">
                           {/* 인사말 */}
                           <div className="p-4 bg-blue-50 rounded-lg">
@@ -313,50 +322,76 @@ export default function PlaceDetailBottomSheet({
                             {renderSection(coreRules)}
                           </div>
 
-                          {/* 상세 안내 및 유사 사례 토글 버튼 */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <Button
-                              onClick={() =>
-                                setActiveToggle(
-                                  activeToggle === "details"
-                                    ? "none"
-                                    : "details"
-                                )
-                              }
+                          {/* 상세 안내, 유사 사고 사례, 날씨 관련 주의사항 - 세그먼트 토글 (긴 텍스트 대응) */}
+                          <div className="w-full overflow-x-auto">
+                            <ToggleGroup
+                              type="single"
                               variant="outline"
-                              className="w-full justify-between items-center h-12 bg-gray-50 hover:bg-gray-100"
-                            >
-                              <div className="flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-blue-600" />
-                                <span className="font-semibold">상세 안내</span>
-                              </div>
-                              <ChevronDown
-                                className={`w-5 h-5 transition-transform ${
-                                  activeToggle === "details" ? "rotate-180" : ""
-                                }`}
-                              />
-                            </Button>
-                            <Button
-                              onClick={() =>
-                                setActiveToggle(
-                                  activeToggle === "cases" ? "none" : "cases"
-                                )
+                              className="w-full"
+                              value={
+                                activeToggle === "none" ? "" : activeToggle
                               }
-                              variant="outline"
-                              className="w-full justify-between items-center h-12 bg-gray-50 hover:bg-gray-100"
-                            >
-                              <div className="flex items-center gap-2">
-                                <AlertTriangle className="w-5 h-5 text-red-600" />
-                                <span className="font-semibold">
-                                  유사 사고 사례
-                                </span>
-                              </div>
-                              <ChevronDown
-                                className={`w-5 h-5 transition-transform ${
-                                  activeToggle === "cases" ? "rotate-180" : ""
-                                }`}
-                              />
-                            </Button>
+                              onValueChange={handleToggleChange}>
+                              <TooltipProvider delayDuration={150}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem
+                                      value="details"
+                                      className="h-12 gap-2">
+                                      <FileText className="w-5 h-5 text-blue-600" />
+                                      <span className="font-semibold truncate min-w-0">
+                                        상세 안내
+                                      </span>
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom">
+                                    상세 안내
+                                  </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem
+                                      value="cases"
+                                      className="h-12 gap-2">
+                                      <AlertTriangle className="w-5 h-5 text-red-600" />
+                                      <span className="font-semibold truncate min-w-0">
+                                        <span className="hidden sm:inline">
+                                          유사 행사 사고 사례
+                                        </span>
+                                        <span className="sm:hidden">
+                                          유사 사고
+                                        </span>
+                                      </span>
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom">
+                                    유사 행사 사고 사례
+                                  </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem
+                                      value="weather"
+                                      className="h-12 gap-2">
+                                      <CloudRain className="w-5 h-5 text-indigo-600" />
+                                      <span className="font-semibold truncate min-w-0">
+                                        <span className="hidden sm:inline">
+                                          날씨 관련 주의사항
+                                        </span>
+                                        <span className="sm:hidden">
+                                          날씨 주의
+                                        </span>
+                                      </span>
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom">
+                                    날씨 관련 주의사항
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </ToggleGroup>
                           </div>
 
                           {/* 상세 안내 내용 */}
@@ -373,6 +408,13 @@ export default function PlaceDetailBottomSheet({
                             </div>
                           )}
 
+                          {/* 날씨 관련 주의사항 내용 */}
+                          {activeToggle === "weather" && (
+                            <div className="p-4 border rounded-lg animate-in fade-in-50 slide-in-from-top-2 duration-300">
+                              {renderSection(weatherCaution)}
+                            </div>
+                          )}
+
                           {/* 비상 연락망 토글 아래로 이동 */}
                           <Accordion
                             type="single"
@@ -380,8 +422,7 @@ export default function PlaceDetailBottomSheet({
                             className="w-full"
                             onValueChange={(value) =>
                               setShowEmergencyContacts(!!value)
-                            }
-                          >
+                            }>
                             <AccordionItem value="emergency">
                               <AccordionTrigger className="font-semibold text-base flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100">
                                 <Phone className="w-5 h-5 text-green-600" />
@@ -402,8 +443,7 @@ export default function PlaceDetailBottomSheet({
                           <div className="text-center pt-4">
                             <Button
                               onClick={() => setShowCitations(!showCitations)}
-                              variant="link"
-                            >
+                              variant="link">
                               <BookOpen className="w-4 h-4 mr-2" />
                               {showCitations
                                 ? "참고자료 숨기기"
@@ -435,8 +475,7 @@ export default function PlaceDetailBottomSheet({
                 <Button
                   onClick={handleAskAI}
                   className="w-full mt-6"
-                  disabled={!generation}
-                >
+                  disabled={!generation}>
                   AI에게 질문하기
                 </Button>
               </>
@@ -448,8 +487,7 @@ export default function PlaceDetailBottomSheet({
                     variant="outline"
                     size="sm"
                     onClick={handleRegisterNewPlace}
-                    className="flex items-center gap-1 bg-transparent"
-                  >
+                    className="flex items-center gap-1 bg-transparent">
                     <Plus className="w-4 h-4" />
                     <span>새로운 여행지 등록하기</span>
                   </Button>
@@ -459,8 +497,7 @@ export default function PlaceDetailBottomSheet({
                     <Card
                       key={place.id}
                       className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => onSelectPlace(place)}
-                    >
+                      onClick={() => onSelectPlace(place)}>
                       <div className="relative">
                         <img
                           src={
