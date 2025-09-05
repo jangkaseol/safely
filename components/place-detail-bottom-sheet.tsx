@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo, useMemo, lazy, Suspense } from "react";
 import {
   MapPin,
   Star,
@@ -32,8 +32,10 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import type { Place, AiResponse, HalluCitedChunk } from "@/lib/types";
-import AIChatSheet from "@/components/ai-chat-sheet";
 import dynamic from "next/dynamic";
+
+// Lazy load heavy components
+const LazyAIChatSheet = lazy(() => import("@/components/ai-chat-sheet"));
 
 const RegisterFormSheet = dynamic(() => import("./register-form-sheet"), {
   ssr: false,
@@ -67,7 +69,71 @@ function parseAiRecommendations(
   return { generation, citedChunks };
 }
 
-export default function PlaceDetailBottomSheet({
+// Memoized place card component
+const MemoizedPlaceCard = memo(function PlaceCard({
+  place,
+  onSelectPlace
+}: {
+  place: Place;
+  onSelectPlace: (place: Place) => void;
+}) {
+  const handleClick = useCallback(() => {
+    onSelectPlace(place);
+  }, [place, onSelectPlace]);
+
+  return (
+    <Card
+      key={place.id}
+      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+      onClick={handleClick}
+    >
+      <div className="relative">
+        <img
+          src={
+            place.image_url ||
+            "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop&crop=center"
+          }
+          alt={place.name}
+          className="w-full h-40 object-cover"
+        />
+        {place.category && (
+          <div className="absolute top-2 left-2">
+            <div className="bg-black bg-opacity-50 text-white px-2 py-1 rounded-md text-xs">
+              {place.category === "tourist_spot" ? "관광지" : place.category === "festival" ? "축제" : place.category}
+            </div>
+          </div>
+        )}
+      </div>
+      <CardContent className="p-4">
+        <div className="space-y-2">
+          <h3 className="font-semibold text-lg line-clamp-1">{place.name}</h3>
+          <p className="text-gray-600 text-sm flex items-center">
+            <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
+            <span className="line-clamp-1">{place.address}</span>
+          </p>
+          {place.description && (
+            <p className="text-gray-700 text-sm line-clamp-2">{place.description}</p>
+          )}
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center">
+              <Star className="w-3 h-3 mr-1" />
+              <span>{place.rating || "N/A"}</span>
+            </div>
+            {place.visitors && (
+              <div className="flex items-center">
+                <Users className="w-3 h-3 mr-1" />
+                <span>{place.visitors}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
+// Main component with React.memo
+const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
   places,
   selectedPlace,
   onSelectPlace,
@@ -86,6 +152,10 @@ export default function PlaceDetailBottomSheet({
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
   const [showCitations, setShowCitations] = useState(false);
 
+  // Throttling for drag operations
+  const dragAnimationFrameRef = useRef<number>();
+  const lastDragTime = useRef(0);
+
   const minHeight = 80;
   const midHeight =
     typeof window !== "undefined" ? window.innerHeight * 0.4 : 300;
@@ -94,11 +164,74 @@ export default function PlaceDetailBottomSheet({
 
   const [height, setHeight] = useState(minHeight);
 
-  useEffect(() => {
-    if (isSearchFocused) {
-      setHeight(minHeight);
+  // Memoize parsed AI recommendations to prevent expensive re-parsing
+  const { generation, citedChunks } = useMemo(() => {
+    return parseAiRecommendations(selectedPlace?.ai_recommendations);
+  }, [selectedPlace?.ai_recommendations]);
+
+  // Memoize place info to prevent recreation on every render
+  const placeInfo = useMemo(() => {
+    if (!selectedPlace) return null;
+
+    return {
+      name: selectedPlace.name,
+      address: selectedPlace.address,
+      imageUrl: selectedPlace.image_url || "",
+      rating: selectedPlace.rating?.toString() || "N/A",
+      period:
+        selectedPlace.period_start && selectedPlace.period_end
+          ? `${selectedPlace.period_start} ~ ${selectedPlace.period_end}`
+          : "N/A",
+      visitors: selectedPlace.visitors?.toString() || "N/A",
+      aiAnalysisTitle: generation
+        ? ""
+        : selectedPlace.ai_analysis_title || "안전 분석 정보 없음",
+      aiAnalysisContent:
+        generation ||
+        selectedPlace.ai_analysis_content ||
+        "해당 장소에 대한 안전 분석 정보가 아직 준비되지 않았습니다.",
+      description: selectedPlace.description,
+    };
+  }, [selectedPlace, generation]);
+
+  // Memoize analysis sections to prevent re-splitting
+  const analysisSections = useMemo(() => {
+    return placeInfo?.aiAnalysisContent
+      .split("---")
+      .map((s) => s.trim())
+      .filter(Boolean) || [];
+  }, [placeInfo?.aiAnalysisContent]);
+
+  // Memoized event handlers
+  const handleToggleChange = useCallback((value: string) => {
+    setActiveToggle(value as "details" | "cases" | "weather" | "none" || "none");
+  }, []);
+
+  const handleAskAI = useCallback(() => {
+    if (placeInfo) {
+      setIsAIChatOpen(true);
     }
-  }, [isSearchFocused, minHeight]);
+  }, [placeInfo]);
+
+  const handleRegisterNewPlace = useCallback(() => {
+    setIsRegisterSheetOpen(true);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setHeight(minHeight);
+    onBackToList();
+  }, [onBackToList, minHeight]);
+
+  // Memoize place cards to prevent recreation
+  const placeCards = useMemo(() => {
+    return places.map((place) => (
+      <MemoizedPlaceCard
+        key={place.id}
+        place={place}
+        onSelectPlace={onSelectPlace}
+      />
+    ));
+  }, [places, onSelectPlace]);
 
   const handleStart = useCallback(
     (
@@ -117,17 +250,37 @@ export default function PlaceDetailBottomSheet({
   const handleMove = useCallback(
     (e: MouseEvent | TouchEvent) => {
       if (!isDragging) return;
-      const currentY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      const deltaY = currentY - startY.current;
-      let newHeight = initialSheetHeight.current - deltaY;
-      newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
-      setHeight(newHeight);
+
+      // Throttle drag updates using requestAnimationFrame
+      if (dragAnimationFrameRef.current) {
+        cancelAnimationFrame(dragAnimationFrameRef.current);
+      }
+
+      dragAnimationFrameRef.current = requestAnimationFrame(() => {
+        const currentTime = performance.now();
+        // Limit updates to ~60fps (16.67ms intervals)
+        if (currentTime - lastDragTime.current < 16) return;
+
+        const currentY = "touches" in e ? e.touches[0].clientY : e.clientY;
+        const deltaY = currentY - startY.current;
+        let newHeight = initialSheetHeight.current - deltaY;
+        newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+        setHeight(newHeight);
+
+        lastDragTime.current = currentTime;
+      });
     },
     [isDragging, minHeight, maxHeight]
   );
 
   const handleEnd = useCallback(() => {
     if (!isDragging) return;
+
+    // Cancel any pending animation frame
+    if (dragAnimationFrameRef.current) {
+      cancelAnimationFrame(dragAnimationFrameRef.current);
+    }
+
     setIsDragging(false);
     if (sheetRef.current) {
       sheetRef.current.style.transition = "height 0.3s ease-out";
@@ -158,6 +311,10 @@ export default function PlaceDetailBottomSheet({
     }
 
     return () => {
+      // Clean up animation frame on unmount
+      if (dragAnimationFrameRef.current) {
+        cancelAnimationFrame(dragAnimationFrameRef.current);
+      }
       document.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseup", handleEnd);
       document.removeEventListener("touchmove", handleMove);
@@ -166,84 +323,6 @@ export default function PlaceDetailBottomSheet({
   }, [isDragging, handleMove, handleEnd]);
 
   const isContentVisible = height > minHeight;
-
-  const handleClose = useCallback(() => {
-    setHeight(minHeight);
-    onBackToList();
-  }, [onBackToList, minHeight]);
-
-  const { generation, citedChunks } = parseAiRecommendations(
-    selectedPlace?.ai_recommendations
-  );
-
-  const placeInfo = selectedPlace
-    ? {
-        name: selectedPlace.name,
-        address: selectedPlace.address,
-        imageUrl: selectedPlace.image_url || "",
-        rating: selectedPlace.rating?.toString() || "N/A",
-        period:
-          selectedPlace.period_start && selectedPlace.period_end
-            ? `${selectedPlace.period_start} ~ ${selectedPlace.period_end}`
-            : "N/A",
-        visitors: selectedPlace.visitors?.toString() || "N/A",
-        aiAnalysisTitle: generation
-          ? ""
-          : selectedPlace.ai_analysis_title || "안전 분석 정보 없음",
-        aiAnalysisContent:
-          generation ||
-          selectedPlace.ai_analysis_content ||
-          "해당 장소에 대한 안전 분석 정보가 아직 준비되지 않았습니다.",
-        description: selectedPlace.description,
-      }
-    : null;
-
-  const analysisSections =
-    placeInfo?.aiAnalysisContent
-      .split("---")
-      .map((s) => s.trim())
-      .filter(Boolean) || [];
-
-  const [
-    greeting,
-    coreRules,
-    detailedGuide,
-    emergencyContacts,
-    similarCases,
-    weatherCaution,
-    closing,
-  ] = analysisSections;
-
-  const renderSection = (content: string | undefined) => {
-    if (!content) return null;
-    return (
-      <MarkdownRenderer
-        content={content}
-        citedChunks={citedChunks || undefined}
-        showCitationList={false}
-      />
-    );
-  };
-
-  const handleToggleChange = (value: string) => {
-    if (!value || value === activeToggle) {
-      setActiveToggle("none");
-      return;
-    }
-    if (value === "details" || value === "cases" || value === "weather") {
-      setActiveToggle(value);
-    }
-  };
-
-  const handleRegisterNewPlace = () => {
-    setIsRegisterSheetOpen(true);
-  };
-
-  const handleAskAI = () => {
-    if (selectedPlace) {
-      setIsAIChatOpen(true);
-    }
-  };
 
   return (
     <>
@@ -254,43 +333,37 @@ export default function PlaceDetailBottomSheet({
           "transition-transform duration-300 ease-out",
           isDragging && "transition-none"
         )}
-        style={{ height: `${height}px` }}>
+        style={{ height: `${height}px` }}
+      >
         <div
           className="flex justify-center py-3 cursor-grab active:cursor-grabbing touch-none"
           onMouseDown={handleStart}
-          onTouchStart={handleStart}>
+          onTouchStart={handleStart}
+        >
           <div className="w-12 h-1 bg-gray-300 rounded-full" />
         </div>
 
         {isContentVisible && (
-          <div className="flex-1 overflow-y-auto px-6 pb-8">
-            {selectedPlace && placeInfo ? (
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
+            {placeInfo ? (
               <>
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4">
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={onBackToList}
-                    className="-ml-2">
+                    className="-ml-2"
+                  >
                     <ChevronLeft className="w-6 h-6" />
                   </Button>
                   <h2 className="text-2xl font-bold flex-1 text-center pr-8">
                     {placeInfo.name}
                   </h2>
                 </div>
+
                 <div className="flex items-center text-gray-600 mb-4">
                   <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
                   <span className="text-sm">{placeInfo.address}</span>
-                </div>
-
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3">상세 정보</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
-                    <div className="flex items-center gap-2 col-span-full">
-                      <Calendar className="w-4 h-4 text-purple-500" />
-                      <span>기간: {placeInfo.period}</span>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center mb-6">
@@ -328,16 +401,16 @@ export default function PlaceDetailBottomSheet({
                               type="single"
                               variant="outline"
                               className="w-full"
-                              value={
-                                activeToggle === "none" ? "" : activeToggle
-                              }
-                              onValueChange={handleToggleChange}>
+                              value={activeToggle === "none" ? "" : activeToggle}
+                              onValueChange={handleToggleChange}
+                            >
                               <TooltipProvider delayDuration={150}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <ToggleGroupItem
                                       value="details"
-                                      className="h-12 gap-2">
+                                      className="h-12 gap-2"
+                                    >
                                       <FileText className="w-5 h-5 text-blue-600" />
                                       <span className="font-semibold truncate min-w-0">
                                         상세 안내
@@ -353,7 +426,8 @@ export default function PlaceDetailBottomSheet({
                                   <TooltipTrigger asChild>
                                     <ToggleGroupItem
                                       value="cases"
-                                      className="h-12 gap-2">
+                                      className="h-12 gap-2"
+                                    >
                                       <AlertTriangle className="w-5 h-5 text-red-600" />
                                       <span className="font-semibold truncate min-w-0">
                                         <span className="hidden sm:inline">
@@ -374,7 +448,8 @@ export default function PlaceDetailBottomSheet({
                                   <TooltipTrigger asChild>
                                     <ToggleGroupItem
                                       value="weather"
-                                      className="h-12 gap-2">
+                                      className="h-12 gap-2"
+                                    >
                                       <CloudRain className="w-5 h-5 text-indigo-600" />
                                       <span className="font-semibold truncate min-w-0">
                                         <span className="hidden sm:inline">
@@ -422,7 +497,8 @@ export default function PlaceDetailBottomSheet({
                             className="w-full"
                             onValueChange={(value) =>
                               setShowEmergencyContacts(!!value)
-                            }>
+                            }
+                          >
                             <AccordionItem value="emergency">
                               <AccordionTrigger className="font-semibold text-base flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100">
                                 <Phone className="w-5 h-5 text-green-600" />
@@ -443,7 +519,8 @@ export default function PlaceDetailBottomSheet({
                           <div className="text-center pt-4">
                             <Button
                               onClick={() => setShowCitations(!showCitations)}
-                              variant="link">
+                              variant="link"
+                            >
                               <BookOpen className="w-4 h-4 mr-2" />
                               {showCitations
                                 ? "참고자료 숨기기"
@@ -475,98 +552,41 @@ export default function PlaceDetailBottomSheet({
                 <Button
                   onClick={handleAskAI}
                   className="w-full mt-6"
-                  disabled={!generation}>
+                  disabled={!generation}
+                >
                   AI에게 질문하기
                 </Button>
               </>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-2xl font-bold">여행지 목록</h2>
+              <div className="space-y-4">
+                <div className="flex justify-end">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleRegisterNewPlace}
-                    className="flex items-center gap-1 bg-transparent">
+                    className="flex items-center gap-1 bg-transparent"
+                  >
                     <Plus className="w-4 h-4" />
                     <span>새로운 여행지 등록하기</span>
                   </Button>
                 </div>
-                {places.length > 0 ? (
-                  places.map((place) => (
-                    <Card
-                      key={place.id}
-                      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => onSelectPlace(place)}>
-                      <div className="relative">
-                        <img
-                          src={
-                            place.image_url ||
-                            "/placeholder.svg?height=150&width=250&text=Place Image"
-                          }
-                          alt={place.name}
-                          className="w-full h-32 object-cover"
-                        />
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-lg mb-1">
-                          {place.name}
-                        </h3>
-                        <div className="flex items-start gap-2 text-sm text-gray-600 mb-2">
-                          <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                          <span className="line-clamp-2">{place.address}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-700 mb-2">
-                          {place.rating && (
-                            <div className="flex items-center gap-1">
-                              <Star className="w-3 h-3 text-yellow-500" />
-                              <span>{place.rating}</span>
-                            </div>
-                          )}
-                          {place.visitors && (
-                            <div className="flex items-center gap-1">
-                              <Users className="w-3 h-3 text-blue-500" />
-                              <span>{place.visitors}</span>
-                            </div>
-                          )}
-                          {place.period_start && place.period_end && (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-purple-500" />
-                              <span>{`${place.period_start} ~ ${place.period_end}`}</span>
-                            </div>
-                          )}
-                        </div>
-                        {place.description && (
-                          <p className="text-sm text-gray-500 mt-2 line-clamp-2">
-                            {place.description}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
-                  <p className="text-center text-gray-500">
-                    검색 결과가 없습니다.
-                  </p>
-                )}
+                <div className="grid gap-4">
+                  {placeCards}
+                </div>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {placeInfo && (
-        <AIChatSheet
+      {/* Memoized child components */}
+      <Suspense fallback={null}>
+        <LazyAIChatSheet
           isOpen={isAIChatOpen}
           onClose={() => setIsAIChatOpen(false)}
-          placeInfo={{
-            name: selectedPlace?.name || "",
-            address: selectedPlace?.address || "",
-            description: selectedPlace?.description || "",
-            ai_recommendations: selectedPlace?.ai_recommendations || null,
-          }}
+          placeInfo={placeInfo || { name: "", address: "", description: "", ai_recommendations: null }}
         />
-      )}
+      </Suspense>
 
       <RegisterFormSheet
         isOpen={isRegisterSheetOpen}
@@ -574,4 +594,9 @@ export default function PlaceDetailBottomSheet({
       />
     </>
   );
-}
+});
+
+// Add display name for debugging
+PlaceDetailBottomSheet.displayName = 'PlaceDetailBottomSheet';
+
+export default PlaceDetailBottomSheet;

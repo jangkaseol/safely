@@ -46,6 +46,9 @@ export default function TopSearchAndCategories({
   const [isInputFocused, setIsInputFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // AbortController for request cancellation
+  const abortControllerRef = useRef<AbortController>();
 
   useEffect(() => {
     onFocusChange?.(isInputFocused);
@@ -56,22 +59,49 @@ export default function TopSearchAndCategories({
       setSuggestions([]);
       return;
     }
+
+    // Cancel previous request if it exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     try {
       const result = await searchPlaceNames(query, 5);
+      
+      // Check if request was aborted
+      if (signal.aborted) return;
+      
       if (result.success) {
         setSuggestions(result.data as any);
+      } else {
+        setSuggestions([]);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Don't show error if request was cancelled
+      if (error.name === 'AbortError') return;
+      
       console.error("Error fetching suggestions:", error);
       setSuggestions([]);
     }
   }, []);
 
   useEffect(() => {
+    // Increased debounce time from 150ms to 400ms for better performance
     const timeoutId = setTimeout(() => {
       fetchSuggestions(searchQuery);
-    }, 150);
-    return () => clearTimeout(timeoutId);
+    }, 400);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      // Cancel ongoing request when component unmounts or query changes
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [searchQuery, fetchSuggestions]);
 
   useEffect(() => {
@@ -84,7 +114,13 @@ export default function TopSearchAndCategories({
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      // Clean up any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   const handleSearch = (query?: string) => {

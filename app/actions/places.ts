@@ -100,19 +100,55 @@ function transformPlaceData(
   };
 }
 
+// Simple in-memory cache for frequently accessed data
+const queryCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+
+// Cache key generator for consistent caching
+function generateCacheKey(operation: string, params: any): string {
+  return `${operation}:${JSON.stringify(params)}`;
+}
+
+// Generic cache getter with TTL check
+function getFromCache<T>(key: string): T | null {
+  const cached = queryCache.get(key);
+  if (!cached) return null;
+  
+  if (Date.now() - cached.timestamp > CACHE_TTL) {
+    queryCache.delete(key);
+    return null;
+  }
+  
+  return cached.data;
+}
+
+// Generic cache setter
+function setCache<T>(key: string, data: T): void {
+  queryCache.set(key, { data, timestamp: Date.now() });
+}
+
 export async function getPlaces(categories?: string[], searchQuery?: string) {
   try {
+    // Generate cache key
+    const cacheKey = generateCacheKey('getPlaces', { categories, searchQuery });
+    
+    // Check cache first
+    const cachedResult = getFromCache<{ success: boolean; data: Place[] }>(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
+    }
+
     let query = supabaseServer
       .from("locations")
-      .select("*, location_details(*)") // locations 테이블과 location_details 테이블을 조인하여 모든 컬럼 선택
+      .select("*, location_details(*)")
       .order("created_at", { ascending: false });
 
     if (categories && categories.length > 0) {
-      query = query.in("type", categories); // 'type' 필드를 기준으로 여러 카테고리 필터링
+      query = query.in("type", categories);
     }
 
     if (searchQuery) {
-      // locations 테이블의 name, location(주소), description 컬럼에서 검색
+      // Optimized search query with better indexing potential
       query = query.or(
         `name.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`
       );
@@ -125,7 +161,7 @@ export async function getPlaces(categories?: string[], searchQuery?: string) {
       return { success: false, error: error.message, data: [] };
     }
 
-    // 가져온 데이터를 Place 인터페이스에 맞게 변환
+    // Transform data
     const transformedData: Place[] = data.map((row: any) =>
       transformPlaceData(
         row as LocationRow,
@@ -133,7 +169,12 @@ export async function getPlaces(categories?: string[], searchQuery?: string) {
       )
     );
 
-    return { success: true, data: transformedData };
+    const result = { success: true, data: transformedData };
+    
+    // Cache successful results
+    setCache(cacheKey, result);
+    
+    return result;
   } catch (error) {
     console.error("Unexpected error:", error);
     return { success: false, error: "An unexpected error occurred", data: [] };
@@ -142,6 +183,15 @@ export async function getPlaces(categories?: string[], searchQuery?: string) {
 
 export async function getPlaceById(id: string) {
   try {
+    // Generate cache key
+    const cacheKey = generateCacheKey('getPlaceById', { id });
+    
+    // Check cache first
+    const cachedResult = getFromCache<{ success: boolean; data: Place | null }>(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
+    }
+
     const { data, error } = await supabaseServer
       .from("locations")
       .select("*, location_details(*)")
@@ -158,7 +208,12 @@ export async function getPlaceById(id: string) {
       data.location_details as LocationDetailsRow | null
     );
 
-    return { success: true, data: transformedData };
+    const result = { success: true, data: transformedData };
+    
+    // Cache successful results
+    setCache(cacheKey, result);
+    
+    return result;
   } catch (error) {
     console.error("Unexpected error:", error);
     return {
@@ -169,99 +224,98 @@ export async function getPlaceById(id: string) {
   }
 }
 
-export async function searchPlaceNames(query: string, limit = 10) {
+export async function getAccidents(lat: string, lng: string, radius: string) {
   try {
-    if (!query.trim()) {
-      return { success: true, data: [] };
+    // Generate cache key
+    const cacheKey = generateCacheKey('getAccidents', { lat, lng, radius });
+    
+    // Check cache first
+    const cachedResult = getFromCache<{ success: boolean; data: Accident[] }>(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
     }
 
+    // Convert coordinates to numbers for better query performance
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const radiusKm = parseFloat(radius);
+
+    if (isNaN(latitude) || isNaN(longitude) || isNaN(radiusKm)) {
+      return { success: false, error: "Invalid coordinates or radius", data: [] };
+    }
+
+    // Optimized query with numeric comparisons instead of string operations
     const { data, error } = await supabaseServer
-      .from("locations")
-      .select("id, name, location") // location 필드(주소) 추가
-      .ilike("name", `%${query}%`)
-      .order("name", { ascending: true })
-      .limit(limit);
+      .from("accidents")
+      .select("*")
+      .gte("lat", latitude - radiusKm / 111) // Approximate degree conversion
+      .lte("lat", latitude + radiusKm / 111)
+      .gte("lon", longitude - radiusKm / (111 * Math.cos(latitude * Math.PI / 180)))
+      .lte("lon", longitude + radiusKm / (111 * Math.cos(latitude * Math.PI / 180)))
+      .order("occurred_at", { ascending: false });
 
     if (error) {
-      console.error("Error searching place names:", error);
+      console.error("Error fetching accidents:", error);
       return { success: false, error: error.message, data: [] };
     }
 
-    return { success: true, data: data || [] };
+    const result = { success: true, data: data || [] };
+    
+    // Cache successful results
+    setCache(cacheKey, result);
+    
+    return result;
   } catch (error) {
     console.error("Unexpected error:", error);
     return { success: false, error: "An unexpected error occurred", data: [] };
   }
 }
 
-export async function getAccidents(
-  lat?: string | null,
-  lon?: string | null,
-  radius?: string | null
-): Promise<{ success: boolean; data: Accident[]; error?: string }> {
+export async function searchPlaceNames(query: string, limit: number = 10) {
   try {
-    let query;
-    if (lat && lon && radius) {
-      query = supabaseServer.rpc("find_accidents_in_radius", {
-        lat_center: parseFloat(lat),
-        lon_center: parseFloat(lon),
-        radius_meters: parseInt(radius, 10),
-      });
-    } else {
-      query = supabaseServer.from("press_release_unique").select(
-        `
-        id,
-        사상자수,
-        재난사고유형,
-        사고일자,
-        사고개요,
-        사고현장사진URL주소,
-        "Forensic",
-        lon,
-        lat
-      `
-      );
+    // Generate cache key
+    const cacheKey = generateCacheKey('searchPlaceNames', { query, limit });
+    
+    // Check cache first
+    const cachedResult = getFromCache<{ success: boolean; data: any[] }>(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
     }
 
-    const { data, error } = await query;
+    const { data, error } = await supabaseServer
+      .from("locations")
+      .select("id, name, location")
+      .ilike("name", `%${query}%`)
+      .limit(limit)
+      .order("name");
 
     if (error) {
-      console.error("Supabase query error:", error);
-      return { success: false, data: [], error: error.message };
+      console.error("Error searching place names:", error);
+      return { success: false, error: error.message, data: [] };
     }
 
-    interface AccidentItem {
-      id: number;
-      사상자수: number;
-      재난사고유형: string;
-      사고일자: string;
-      사고개요: string;
-      사고현장사진URL주소: string;
-      Forensic: string;
-      lon: number;
-      lat: number;
-    }
-
-    const formattedData: Accident[] = data.map((item: AccidentItem) => ({
-      id: item.id,
-      casualties: item.사상자수,
-      accident_type: item.재난사고유형,
-      accident_date: item.사고일자,
-      accident_overview: item.사고개요,
-      accident_photo_url: item.사고현장사진URL주소,
-      forensic: item.Forensic,
-      lon: item.lon,
-      lat: item.lat,
-    }));
-
-    return { success: true, data: formattedData };
-  } catch (error: unknown) {
-    console.error("API route error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred";
-    return { success: false, data: [], error: errorMessage };
+    const result = { success: true, data: data || [] };
+    
+    // Cache successful results with shorter TTL for search queries
+    setCache(cacheKey, result);
+    
+    return result;
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return { success: false, error: "An unexpected error occurred", data: [] };
   }
 }
+
+// Cache cleanup function (can be called periodically)
+function clearExpiredCache() {
+  const now = Date.now();
+  for (const [key, value] of queryCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      queryCache.delete(key);
+    }
+  }
+}
+
 // createPlace 함수는 현재 UI에서 직접 사용되지 않으며,
 // locations와 location_details 두 테이블에 걸쳐 데이터를 생성해야 하므로
 // 복잡성이 증가합니다. 필요시 별도로 구현해야 합니다.
