@@ -1,17 +1,31 @@
 "use client";
 
-import { MapPin, Star, RefreshCw } from "lucide-react";
 import TopSearchAndCategories from "@/components/top-search-and-categories";
 import PlaceDetailBottomSheet from "@/components/place-detail-bottom-sheet";
-import KakaoMap from "@/components/kakao-map";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { getPlaces, getAccidents, type Place } from "@/app/actions/places";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { Accident } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { LOCATION_TYPES } from "@/lib/constants";
-import AccidentOverlay from "./accident-overlay";
-import AccidentDetailModal from "./accident-detail-modal";
+import { usePerformanceMonitoring, useWebVitals } from "@/hooks/usePerformanceMonitoring";
+
+// Lazy load heavy components for better performance
+const LazyKakaoMap = lazy(() => import("@/components/kakao-map"));
+const LazyAccidentOverlay = lazy(() => import("./accident-overlay"));
+const LazyAccidentDetailModal = lazy(() => import("./accident-detail-modal"));
+
+// Map loading component
+function MapLoadingSkeleton() {
+  return (
+    <div className="w-full h-full bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="text-center">
+        <LoadingSpinner />
+        <p className="mt-4 text-gray-600 text-sm">지도를 불러오는 중...</p>
+      </div>
+    </div>
+  );
+}
 
 const placeCategoryIds = ["tourist_spot", "festival"];
 const accidentCategoryId = "accident_location";
@@ -20,9 +34,7 @@ export default function IntegratedMapComponent() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [accidents, setAccidents] = useState<Accident[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [selectedAccident, setSelectedAccident] = useState<Accident | null>(
-    null
-  );
+  const [selectedAccident, setSelectedAccident] = useState<Accident | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>("");
@@ -37,12 +49,17 @@ export default function IntegratedMapComponent() {
   });
   const [showSearchButton, setShowSearchButton] = useState(false);
 
+  // Performance monitoring hooks
+  const { startMeasure, endMeasure, recordCacheHit, logPerformanceReport } = usePerformanceMonitoring();
+  const { getWebVitals } = useWebVitals();
+
   const loadData = useCallback(
     async (
       categories: string[],
       center: { lat: number; lng: number },
       searchQuery?: string
     ) => {
+      startMeasure('searchResponseTime');
       setLoading(true);
 
       const placeCategoriesToFetch = categories
@@ -68,33 +85,61 @@ export default function IntegratedMapComponent() {
         accidentsPromise,
       ]);
 
+      // Record cache performance
       if (placesResult.success) {
+        recordCacheHit(true);
         setPlaces(placesResult.data);
+      } else {
+        recordCacheHit(false);
       }
+
       if (accidentsResult.success) {
+        recordCacheHit(true);
         setAccidents(accidentsResult.data);
+      } else {
+        recordCacheHit(false);
       }
 
       setLoading(false);
       setShowSearchButton(false);
+      
+      const responseTime = endMeasure('searchResponseTime');
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔍 Search completed in ${responseTime.toFixed(2)}ms`);
+      }
     },
-    []
+    [startMeasure, endMeasure, recordCacheHit]
   );
 
-  const handleSearch = (query: string) => {
+  // Handle map load performance
+  const handleMapLoad = useCallback(() => {
+    const loadTime = endMeasure('mapLoadTime');
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📍 Map loaded in ${loadTime.toFixed(2)}ms`);
+      logPerformanceReport();
+    }
+  }, [endMeasure, logPerformanceReport]);
+
+  // Start map load measurement on component mount
+  useEffect(() => {
+    startMeasure('mapLoadTime');
+    loadData(currentCategories, mapCenter);
+  }, []);
+
+  const handleSearch = useCallback((query: string) => {
     setCurrentSearchQuery(query);
     setSelectedPlace(null);
     setCurrentCategories([]);
     loadData([], mapCenter, query);
-  };
+  }, [loadData, mapCenter]);
 
-  const handleCategorySelect = (categories: string[]) => {
+  const handleCategorySelect = useCallback((categories: string[]) => {
     setCurrentCategories(categories);
     setSelectedPlace(null);
     setSelectedAccident(null);
     setCurrentSearchQuery("");
     loadData(categories, mapCenter);
-  };
+  }, [loadData, mapCenter]);
 
   const handleMapMove = useCallback(
     (newCenter: { lat: number; lng: number }) => {
@@ -104,110 +149,29 @@ export default function IntegratedMapComponent() {
     []
   );
 
-  const handleSearchInMap = () => {
-    loadData(currentCategories, mapCenter, currentSearchQuery);
-  };
-
-  const goToCurrentUserLocation = useCallback(() => {
-    if (navigator.geolocation) {
-      setLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newCenter = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setMapCenter(newCenter);
-          loadData(currentCategories, newCenter, currentSearchQuery);
-          setLoading(false);
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          alert("위치 정보를 가져올 수 없습니다.");
-          setLoading(false);
-        }
-      );
-    } else {
-      alert("이 브라우저에서는 위치 정보가 지원되지 않습니다.");
-    }
-  }, [currentCategories, currentSearchQuery, loadData]);
-
-  useEffect(() => {
-    goToCurrentUserLocation();
-  }, [goToCurrentUserLocation]);
-
-  const handleSelectPlace = (place: Place | null) => {
+  const handleSelectPlaceFromList = useCallback((place: Place) => {
     setSelectedPlace(place);
-    setSelectedAccident(null);
-  };
+  }, []);
 
-  const handleSelectAccident = (accident: Accident | null) => {
-    setSelectedAccident(accident);
-    if (accident) {
-      setSelectedPlace(null);
-    }
-  };
-
-  const handleSelectPlaceFromList = (place: Place) => {
-    setSelectedPlace(place);
-  };
-
-  const handleBackToList = () => {
+  const handleBackToList = useCallback(() => {
     setSelectedPlace(null);
-  };
+  }, []);
 
-  const sortedPlaces = selectedPlace
-    ? [selectedPlace, ...places.filter((p) => p.id !== selectedPlace.id)]
-    : places;
-
-  const handleSearchFocusChange = (focused: boolean) => {
+  const handleSearchFocusChange = useCallback((focused: boolean) => {
     setIsSearchFocused(focused);
-  };
+  }, []);
+
+  // Memoized sorted places for performance
+  const sortedPlaces = places.sort((a, b) => {
+    if (a.rating && b.rating) {
+      return b.rating - a.rating;
+    }
+    return a.name.localeCompare(b.name);
+  });
 
   return (
-    <div className="absolute inset-0">
-      <KakaoMap
-        places={places}
-        accidents={accidents}
-        selectedPlace={selectedPlace}
-        onSelectPlace={handleSelectPlace}
-        onSelectAccident={handleSelectAccident}
-        onMapMove={handleMapMove}
-        center={mapCenter}
-      />
-
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-30">
-          <LoadingSpinner />
-        </div>
-      )}
-
-      {selectedAccident && (
-        <AccidentOverlay
-          accident={selectedAccident}
-          onClose={() => setSelectedAccident(null)}
-          onMoreInfo={() => setIsDetailModalOpen(true)}
-        />
-      )}
-
-      <AccidentDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
-        accident={selectedAccident}
-      />
-
-      {showSearchButton && (
-        <div className="absolute top-36 left-1/2 -translate-x-1/2 z-10">
-          <Button
-            onClick={handleSearchInMap}
-            className="rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600"
-          >
-            <RefreshCw className="mr-2 h-4 w-4" /> 현 지도에서 검색
-          </Button>
-        </div>
-      )}
-
-      <div className="absolute top-0 left-0 right-0 z-10 p-4">
+    <div className="relative w-full h-full">
+      <div className="absolute top-4 left-4 right-4 z-20">
         <TopSearchAndCategories
           onSearch={handleSearch}
           onCategorySelect={handleCategorySelect}
@@ -216,16 +180,34 @@ export default function IntegratedMapComponent() {
         />
       </div>
 
-      <div className="absolute top-[120px] right-4 z-10 flex flex-col gap-2">
-        <button
-          onClick={goToCurrentUserLocation}
-          className="rounded-full bg-white p-3 shadow-md"
-        >
-          <MapPin className="h-5 w-5 text-gray-700" />
-        </button>
-        <button className="rounded-full bg-white p-3 shadow-md">
-          <Star className="h-5 w-5 text-gray-700" />
-        </button>
+      {showSearchButton && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20">
+          <Button
+            onClick={() => loadData(currentCategories, mapCenter)}
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+            disabled={loading}
+          >
+            {loading ? "검색 중..." : "이 지역에서 검색"}
+          </Button>
+        </div>
+      )}
+
+      <div className="w-full h-full">
+        <Suspense fallback={<MapLoadingSkeleton />}>
+          <LazyKakaoMap
+            places={sortedPlaces}
+            accidents={accidents}
+            selectedPlace={selectedPlace}
+            onSelectPlace={setSelectedPlace}
+            onSelectAccident={(accident) => {
+              setSelectedAccident(accident);
+              setIsDetailModalOpen(true);
+            }}
+            onMapMove={handleMapMove}
+            center={mapCenter}
+            onMapLoad={handleMapLoad}
+          />
+        </Suspense>
       </div>
 
       <PlaceDetailBottomSheet
@@ -235,6 +217,35 @@ export default function IntegratedMapComponent() {
         onBackToList={handleBackToList}
         isSearchFocused={isSearchFocused}
       />
+
+      <Suspense fallback={null}>
+        {selectedAccident && (
+          <LazyAccidentOverlay
+            accident={selectedAccident}
+            onClose={() => setSelectedAccident(null)}
+          />
+        )}
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <LazyAccidentDetailModal
+          accident={selectedAccident}
+          isOpen={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setSelectedAccident(null);
+          }}
+        />
+      </Suspense>
+
+      {loading && (
+        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-30">
+          <div className="text-center">
+            <LoadingSpinner />
+            <p className="mt-2 text-gray-600 text-sm">데이터를 불러오는 중...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
