@@ -1,7 +1,7 @@
-// Service Worker for Safety Navigator
+// Service Worker for 세이프리 (Safely)
 // Provides offline caching for map tiles, API responses, and static assets
 
-const CACHE_NAME = 'safety-navigator-v1';
+const CACHE_NAME = 'safely-v1';
 const STATIC_CACHE = 'static-assets-v1';
 const API_CACHE = 'api-responses-v1';
 const MAP_CACHE = 'map-tiles-v1';
@@ -124,7 +124,7 @@ self.addEventListener('push', (event) => {
   if (event.data) {
     const data = event.data.json();
     const options = {
-      body: data.body || 'Safety Navigator notification',
+      body: data.body || '세이프리 알림',
       icon: data.icon || '/icon-192x192.png',
       badge: '/icon-192x192.png',
       vibrate: [100, 50, 100],
@@ -148,7 +148,7 @@ self.addEventListener('push', (event) => {
     
     event.waitUntil(
       self.registration.showNotification(
-        data.title || 'Safety Navigator', 
+        data.title || '세이프리',
         options
       )
     );
