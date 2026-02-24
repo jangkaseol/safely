@@ -1,7 +1,7 @@
 "use client";
 
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface OptimizedImageProps {
@@ -78,14 +78,13 @@ export function OptimizedImage({
 }: OptimizedImageProps) {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [blurData, setBlurData] = useState<string>('');
 
-  // Generate blur placeholder on client side
-  useEffect(() => {
-    if (placeholder === 'blur' && !blurDataURL && typeof window !== 'undefined') {
-      const blur = generateBlurDataURL(width || 20, height || 20);
-      setBlurData(blur);
+  const computedBlurData = useMemo(() => {
+    if (placeholder !== 'blur' || blurDataURL || typeof window === 'undefined') {
+      return '';
     }
+
+    return generateBlurDataURL(width || 20, height || 20);
   }, [placeholder, blurDataURL, width, height]);
 
   const handleLoad = () => {
@@ -134,7 +133,7 @@ export function OptimizedImage({
     ...(sizes || !fill ? { sizes: generateSizes(sizes) } : {}),
     ...(placeholder === 'blur' ? {
       placeholder: 'blur' as const,
-      blurDataURL: blurDataURL || blurData || 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=='
+      blurDataURL: blurDataURL || computedBlurData || 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=='
     } : {}),
     quality: isModernImageFormat(src) ? 100 : 85,
   };

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Shield, Map, MessageSquare, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 
 const features = [
   {
@@ -138,6 +139,11 @@ export default function LandingPage() {
           </Link>
         </div>
       </section>
+
+      {/* PWA Install Prompt */}
+      <div className="max-w-6xl mx-auto px-6 pb-8">
+        <PWAInstallPrompt className="mx-auto max-w-lg" />
+      </div>
 
       {/* Footer */}
       <footer className="border-t border-gray-100 py-8">
