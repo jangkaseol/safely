@@ -53,10 +53,13 @@ export default function RootLayout({
             ❌ 주의: autoload=true로 변경하면 react-kakao-maps-sdk와 충돌 발생
             ❌ 주의: libraries=services 누락하면 Geocoder 사용 불가
           */}
-          <Script
-            src={`//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_API_KEY}&libraries=services&autoload=false`}
-            strategy="beforeInteractive"
-          />
+          {KAKAO_MAP_API_KEY ? (
+            <Script
+              src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_API_KEY}&libraries=services&autoload=false`}
+              strategy="beforeInteractive"
+              data-kakao-maps="true"
+            />
+          ) : null}
           {children}
           <Toaster position="top-center" />
         </ThemeProvider>

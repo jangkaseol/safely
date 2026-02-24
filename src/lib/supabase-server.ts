@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js"
 
-const supabaseUrl = "https://rndhvjsgzrdmavwowpdr.supabase.co"
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!supabaseServiceKey) {
+if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error(
-    "Missing SUPABASE_SERVICE_ROLE_KEY environment variable. Please set it in your Vercel project settings or .env.local file.",
+    "Missing Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)",
   )
 }
 

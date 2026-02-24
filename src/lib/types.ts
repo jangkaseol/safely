@@ -1,27 +1,3 @@
-export interface Place {
-  id: string;
-  name: string;
-  address: string; // locations.location
-  latitude: number | null;
-  longitude: number | null;
-  description: string | null;
-  image_url: string | null;
-  category: string | null;
-  period_start: string | null; // locations.start_date
-  period_end: string | null; // locations.end_date
-  created_at: string;
-  updated_at: string;
-  safety_score: number | null;
-  safety_analysis_basis: string | null;
-  ai_recommendations: any | null;
-  real_time_alerts: string | null;
-  rating: number | null;
-  visitors: string | null; // location_details.visitors (text 타입)
-  ai_analysis_title?: string | null;
-  ai_analysis_content?: string | null;
-  end_date?: string | null;
-}
-
 export interface Location {
   id: number;
   user_id?: string;
@@ -83,15 +59,6 @@ export interface Accident {
   lat: number | null;
 }
 
-// 채팅 관련 타입
-export interface ChatSession {
-  id: string;
-  location_id: number;
-  user_id: string;
-  title: string;
-  created_at: string;
-}
-
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -105,14 +72,6 @@ export interface EmergencyContact {
   id: number;
   name: string;
   contact_number: string;
-}
-
-export interface UploadedFile {
-  name: string;
-  path: string;
-  url: string;
-  type: string;
-  size: number;
 }
 
 // 서버 액션 createLocation에 전달될 데이터 타입

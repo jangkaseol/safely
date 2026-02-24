@@ -3,16 +3,8 @@
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { Map as KakaoMapComponent, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
 import { LOCATION_TYPES, MARKER_SIZE } from "@/lib/constants";
-import type { Place, Accident } from "@/lib/types";
-
-export interface PolygonData {
-  path: { lat: number; lng: number }[];
-  strokeWeight?: number;
-  strokeColor?: string;
-  strokeOpacity?: number;
-  fillColor?: string;
-  fillOpacity?: number;
-}
+import type { Place } from "@/app/actions/places";
+import type { Accident } from "@/lib/types";
 
 interface KakaoMapProps {
   places?: Place[];
@@ -124,10 +116,8 @@ const KakaoMap = memo(function KakaoMap({
   const [map, setMap] = useState<kakao.maps.Map>();
   const markerClickedRef = useRef(false);
   const [isKakaoLoaded, setIsKakaoLoaded] = useState(false);
-
-  // Memoize processed places and accidents to avoid recalculating markers
-  const memoizedPlaces = useMemo(() => places, [places]);
-  const memoizedAccidents = useMemo(() => accidents, [accidents]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
 
   // Memoize marker click handlers to prevent re-renders
   const handlePlaceClick = useCallback((place: Place) => {
@@ -162,7 +152,7 @@ const KakaoMap = memo(function KakaoMap({
 
   // Memoize place markers to avoid recreation
   const placeMarkers = useMemo(() => {
-    return memoizedPlaces.map((place) => {
+    return places.map((place) => {
       if (!place.latitude || !place.longitude) return null;
       const imageInfo = getMarkerImageInfo(place.category, false);
       
@@ -176,11 +166,11 @@ const KakaoMap = memo(function KakaoMap({
         />
       );
     }).filter(Boolean);
-  }, [memoizedPlaces, handlePlaceClick]);
+  }, [places, handlePlaceClick]);
 
   // Memoize accident markers
   const accidentMarkers = useMemo(() => {
-    return memoizedAccidents.map((accident) => {
+    return accidents.map((accident) => {
       if (!accident.lat || !accident.lon) return null;
       const imageInfo = getMarkerImageInfo(null, true, accident.accident_type);
       
@@ -194,7 +184,7 @@ const KakaoMap = memo(function KakaoMap({
         />
       );
     }).filter(Boolean);
-  }, [memoizedAccidents, handleAccidentClick]);
+  }, [accidents, handleAccidentClick]);
 
   // Memoize selected place overlay
   const selectedPlaceOverlay = useMemo(() => {
@@ -218,24 +208,80 @@ const KakaoMap = memo(function KakaoMap({
     );
   }, [selectedPlace]);
 
-  // 카카오 맵 초기화
-  // 주의: react-kakao-maps-sdk 사용 시 수동 초기화 필요
-  // autoload=false로 설정된 스크립트를 window.kakao.maps.load()로 활성화
   useEffect(() => {
-    if (window.kakao && window.kakao.maps) {
-      window.kakao.maps.load(() => {
-        // console.log("✅ KakaoMap: 카카오 맵 초기화 완료");
-        setIsKakaoLoaded(true);
-      });
+    if (!kakaoAppKey) {
+      return;
     }
-  }, []);
+
+    let cancelled = false;
+    let retries = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const tryLoad = () => {
+      if (cancelled) return;
+
+      if (window.kakao?.maps?.load) {
+        window.kakao.maps.load(() => {
+          if (cancelled) return;
+          setLoadError(null);
+          setIsKakaoLoaded(true);
+        });
+        return;
+      }
+
+      const hasScript = document.querySelector(
+        'script[data-kakao-maps="true"],script[src*="dapi.kakao.com/v2/maps/sdk.js"]'
+      );
+
+      if (!hasScript) {
+        const script = document.createElement("script");
+        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoAppKey}&libraries=services&autoload=false`;
+        script.async = true;
+        script.setAttribute("data-kakao-maps", "true");
+        script.addEventListener("error", () => {
+          setLoadError("카카오 맵 스크립트를 불러오지 못했습니다.");
+        });
+        document.head.appendChild(script);
+      }
+
+      retries += 1;
+      if (retries > 50) {
+        setLoadError("카카오 맵 초기화가 지연되고 있습니다. 잠시 후 새로고침해주세요.");
+        return;
+      }
+
+      timer = setTimeout(tryLoad, 100);
+    };
+
+    tryLoad();
+
+    return () => {
+      cancelled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [kakaoAppKey]);
 
   useEffect(() => {
-    if (map && center) {
+    if (!map || !isKakaoLoaded) {
+      return;
+    }
+
+    const relayout = () => {
+      map.relayout();
       const newCenter = new kakao.maps.LatLng(center.lat, center.lng);
       map.setCenter(newCenter);
-    }
-  }, [map, center]);
+    };
+
+    const frame = requestAnimationFrame(relayout);
+    window.addEventListener("resize", relayout);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", relayout);
+    };
+  }, [map, isKakaoLoaded, center]);
 
   useEffect(() => {
     if (
@@ -253,26 +299,32 @@ const KakaoMap = memo(function KakaoMap({
   }, [map, selectedPlace]);
 
   if (!isKakaoLoaded) {
+    const loadingMessage = !kakaoAppKey
+      ? "NEXT_PUBLIC_KAKAO_APP_KEY가 설정되지 않았습니다."
+      : loadError ?? "지도를 불러오는 중...";
+
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-100">
-        <div className="text-gray-600">지도를 불러오는 중...</div>
+        <div className="text-gray-600">{loadingMessage}</div>
       </div>
     );
   }
 
   return (
-    <KakaoMapComponent
-      center={center}
-      style={{ width: "100%", height: "100%" }}
-      level={8}
-      onCreate={setMap}
-      onClick={handleMapClick}
-      onCenterChanged={handleCenterChange}
-    >
-      {placeMarkers}
-      {accidentMarkers}
-      {selectedPlaceOverlay}
-    </KakaoMapComponent>
+    <div className="kakao-map-root w-full h-full">
+      <KakaoMapComponent
+        center={center}
+        style={{ width: "100%", height: "100%" }}
+        level={8}
+        onCreate={setMap}
+        onClick={handleMapClick}
+        onCenterChanged={handleCenterChange}
+      >
+        {placeMarkers}
+        {accidentMarkers}
+        {selectedPlaceOverlay}
+      </KakaoMapComponent>
+    </div>
   );
 });
 

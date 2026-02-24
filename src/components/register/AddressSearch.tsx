@@ -32,7 +32,6 @@ export default function AddressSearch({ onComplete }: AddressSearchProps) {
   useEffect(() => {
     const checkKakaoReady = () => {
       if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
-        // console.log("✅ AddressSearch: 카카오 맵 서비스 준비 완료");
         setIsKakaoReady(true);
         return true;
       }
@@ -54,8 +53,6 @@ export default function AddressSearch({ onComplete }: AddressSearchProps) {
   }, []);
 
   const handleComplete = (data: Address) => {
-    // console.log("🔍 주소 검색 완료:", data);
-
     // react-kakao-maps-sdk가 이미 로드한 카카오 맵 API 사용
     if (!window.kakao?.maps?.services) {
       toast.error(
@@ -66,52 +63,31 @@ export default function AddressSearch({ onComplete }: AddressSearchProps) {
 
     try {
       const geocoder = new window.kakao.maps.services.Geocoder();
-      // console.log("🗺️ Geocoder 생성 완료");
-
       geocoder.addressSearch(data.address, (result, status) => {
-        // console.log("📍 Geocoder 결과:", {
-        //   result,
-        //   status,
-        //   statusOK: window.kakao.maps.services.Status.OK,
-        // });
-
         if (
           status === window.kakao.maps.services.Status.OK &&
           result &&
           result.length > 0
         ) {
-          // console.log("✅ 좌표 변환 성공:", result[0]);
-
           const addressResult = {
             address: result[0].address_name,
             latitude: Number(result[0].y),
             longitude: Number(result[0].x),
           };
 
-          // console.log("📤 최종 결과 전달:", addressResult);
           onComplete(addressResult);
           setIsOpen(false);
           toast.success("주소가 성공적으로 설정되었습니다.");
         } else {
-          // console.error("❌ 주소 변환 실패:", { status, result });
           toast.error(
             "주소 변환에 실패했습니다. 다른 주소로 다시 시도해주세요."
           );
         }
       });
     } catch (error) {
-      // console.error("❌ Geocoder 생성 또는 실행 중 오류:", error);
       toast.error("주소 검색 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
   };
-
-  // 디버깅: 현재 상태 로그 (필요 시 주석 해제)
-  // console.log("🔍 AddressSearch 현재 상태:", {
-  //   kakao: !!window.kakao,
-  //   maps: !!window.kakao?.maps,
-  //   services: !!window.kakao?.maps?.services,
-  //   isKakaoReady,
-  // });
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

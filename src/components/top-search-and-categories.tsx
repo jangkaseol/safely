@@ -6,17 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { searchPlaceNames } from "@/app/actions/places";
-
-// 변경된 카테고리 목록 정의
-const staticCategories = [
-  { id: "all", name: "전체" },
-  { id: "tourist_spot", name: "관광지" },
-  { id: "festival", name: "축제" },
-  { id: "accident_location", name: "사고 위치" },
-];
-
-const placeCategoryIds = ["tourist_spot", "festival"];
-const accidentCategoryId = "accident_location";
+import {
+  STATIC_CATEGORIES,
+  PLACE_CATEGORY_IDS,
+  ACCIDENT_CATEGORY_ID,
+} from "@/lib/map-constants";
 
 interface TopSearchAndCategoriesProps {
   onSearch?: (query: string) => void;
@@ -38,7 +32,7 @@ export default function TopSearchAndCategories({
   initialSelectedCategories = [],
 }: TopSearchAndCategoriesProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [categories] = useState(staticCategories);
+  const [categories] = useState([...STATIC_CATEGORIES]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initialSelectedCategories
   );
@@ -49,7 +43,7 @@ export default function TopSearchAndCategories({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // AbortController for request cancellation
-  const abortControllerRef = useRef<AbortController>();
+  const abortControllerRef = useRef<AbortController | undefined>(undefined);
 
   useEffect(() => {
     onFocusChange?.(isInputFocused);
@@ -147,7 +141,7 @@ export default function TopSearchAndCategories({
     let newSelectedCategories: string[];
 
     if (categoryId === "all") {
-      const allCategoryIds = [...placeCategoryIds, accidentCategoryId];
+      const allCategoryIds = [...PLACE_CATEGORY_IDS, ACCIDENT_CATEGORY_ID];
       // 모든 카테고리가 이미 선택되어 있는지 확인
       const areAllSelected =
         allCategoryIds.every((id) => selectedCategories.includes(id)) &&
@@ -243,7 +237,7 @@ export default function TopSearchAndCategories({
 
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {categories.map((category) => {
-          const allCategoryIds = [...placeCategoryIds, accidentCategoryId];
+          const allCategoryIds = [...PLACE_CATEGORY_IDS, ACCIDENT_CATEGORY_ID];
           const areAllSelected =
             allCategoryIds.every((id) => selectedCategories.includes(id)) &&
             selectedCategories.length === allCategoryIds.length;

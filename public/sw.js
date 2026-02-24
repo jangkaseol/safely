@@ -1,32 +1,21 @@
 // Service Worker for 세이프리 (Safely)
 // Provides offline caching for map tiles, API responses, and static assets
 
-const CACHE_NAME = 'safely-v1';
-const STATIC_CACHE = 'static-assets-v1';
-const API_CACHE = 'api-responses-v1';
-const MAP_CACHE = 'map-tiles-v1';
+const CACHE_NAME = 'safely-v2';
+const STATIC_CACHE = 'static-assets-v2';
+const API_CACHE = 'api-responses-v2';
 
 // Assets to cache immediately on service worker installation
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/safely-logo.png',
-  '/safely-logo.png',
-  '/_next/static/css/app/layout.css',
-  '/_next/static/chunks/webpack.js',
-  '/_next/static/chunks/main-app.js'
+  '/safely-logo.png'
 ];
 
 // API endpoints to cache with stale-while-revalidate strategy
 const API_ENDPOINTS = [
   '/api/places',
   '/api/accidents'
-];
-
-// Kakao Map tile patterns to cache
-const MAP_TILE_PATTERNS = [
-  /^https:\/\/map\d+\.daumcdn\.net\/map_2d/,
-  /^https:\/\/map\d+\.daumcdn\.net\/map_skyview/
 ];
 
 // Install event - cache static assets
@@ -60,11 +49,11 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== STATIC_CACHE && 
-                cacheName !== API_CACHE && 
-                cacheName !== MAP_CACHE) {
+                cacheName !== API_CACHE) {
               console.log('[SW] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
+            return Promise.resolve(false);
           })
         );
       })
@@ -86,15 +75,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle API requests with stale-while-revalidate
-  if (isAPIRequest(url)) {
-    event.respondWith(staleWhileRevalidate(request, API_CACHE));
+  if (url.origin !== self.location.origin) {
     return;
   }
 
-  // Handle Kakao map tiles with cache-first strategy
-  if (isMapTileRequest(url)) {
-    event.respondWith(cacheFirst(request, MAP_CACHE));
+  // Handle API requests with stale-while-revalidate
+  if (isAPIRequest(url)) {
+    event.respondWith(staleWhileRevalidate(request, API_CACHE));
     return;
   }
 
@@ -259,10 +246,6 @@ async function staleWhileRevalidate(request, cacheName) {
 function isAPIRequest(url) {
   return API_ENDPOINTS.some(endpoint => url.pathname.startsWith(endpoint)) ||
          url.pathname.startsWith('/api/');
-}
-
-function isMapTileRequest(url) {
-  return MAP_TILE_PATTERNS.some(pattern => pattern.test(url.href));
 }
 
 function isStaticAsset(url) {

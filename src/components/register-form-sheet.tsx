@@ -6,7 +6,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-  SheetFooter,
 } from "@/components/ui/sheet";
 import RegisterForm from "./register/RegisterForm";
 import { ScrollArea } from "@/components/ui/scroll-area";

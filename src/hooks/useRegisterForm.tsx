@@ -2,13 +2,12 @@
 
 import { useState, useCallback, useTransition } from "react";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
 
 import { createLocation } from "@/app/actions/register";
 import { uploadFile } from "@/lib/file-upload";
+import { submitCustomForm } from "@/lib/api-client";
 import type {
   Location,
   EmergencyContact,
@@ -35,8 +34,20 @@ type FormState = Omit<
   | "end_date"
 >;
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+}
+
 export function useRegisterForm() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [locationData, setLocationData] = useState<FormState>({
@@ -94,11 +105,14 @@ export function useRegisterForm() {
       const file = e.target.files?.[0];
       if (file) {
         setImageFile(file);
+        if (imagePreview) {
+          URL.revokeObjectURL(imagePreview);
+        }
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
       }
     },
-    []
+    [imagePreview]
   );
 
   const addEmergencyContact = useCallback(() => {
@@ -168,19 +182,6 @@ export function useRegisterForm() {
     },
     []
   );
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
 
   const handleSubmit = useCallback(async () => {
     const { name, type, location } = locationData;
@@ -259,23 +260,10 @@ export function useRegisterForm() {
           expected_attendees: locationData.expected_attendees || "",
         };
 
-        const response = await fetch("/api/custom_form", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            locationData: dbLocationData,
-            aiRequest: aiPayload,
-          }),
+        const result = await submitCustomForm({
+          locationData: dbLocationData,
+          aiRequest: aiPayload,
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error || "AI 서버와의 통신 중 오류가 발생했습니다."
-          );
-        }
-
-        const result = await response.json();
 
         toast.success(
           result.message || "새로운 장소가 성공적으로 등록되었습니다!"

@@ -5,9 +5,9 @@ export const dynamic = "force-dynamic";
 
 export default function MapPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-50 overflow-hidden">
       <Header />
-      <div className="flex-1 relative">
+      <div className="relative h-[calc(100dvh-3.5rem)] min-h-[320px]">
         <IntegratedMapComponent />
       </div>
     </div>

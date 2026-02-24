@@ -86,12 +86,12 @@ function transformPlaceData(
     period_end: location.end_date,
     created_at: location.created_at,
     updated_at: location.updated_at,
-    safety_score: details?.safety_score || null,
-    safety_analysis_basis: details?.safety_analysis_basis || null,
-    ai_recommendations: details?.ai_recommendations || null,
-    real_time_alerts: details?.real_time_alerts || null,
-    rating: details?.rating || null,
-    visitors: details?.visitors || null,
+    safety_score: details?.safety_score ?? null,
+    safety_analysis_basis: details?.safety_analysis_basis ?? null,
+    ai_recommendations: details?.ai_recommendations ?? null,
+    real_time_alerts: details?.real_time_alerts ?? null,
+    rating: details?.rating ?? null,
+    visitors: details?.visitors ?? null,
     // AI 분석 제목은 safety_analysis_basis가 있으면 "AI 안전 분석"으로 설정
     ai_analysis_title: details?.safety_analysis_basis ? "AI 안전 분석" : null,
     // AI 분석 내용은 safety_analysis_basis 또는 ai_recommendations 중 하나를 사용
@@ -305,19 +305,3 @@ export async function searchPlaceNames(query: string, limit: number = 10) {
     return { success: false, error: "An unexpected error occurred", data: [] };
   }
 }
-
-// Cache cleanup function (can be called periodically)
-function clearExpiredCache() {
-  const now = Date.now();
-  for (const [key, value] of queryCache.entries()) {
-    if (now - value.timestamp > CACHE_TTL) {
-      queryCache.delete(key);
-    }
-  }
-}
-
-// createPlace 함수는 현재 UI에서 직접 사용되지 않으며,
-// locations와 location_details 두 테이블에 걸쳐 데이터를 생성해야 하므로
-// 복잡성이 증가합니다. 필요시 별도로 구현해야 합니다.
-// 현재는 제거합니다.
-// export async function createPlace(...) { ... }

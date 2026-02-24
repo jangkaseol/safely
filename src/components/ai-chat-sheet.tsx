@@ -13,7 +13,7 @@ import { Send, ChevronLeft, Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Message } from "@/lib/types";
 import { v4 as uuidv4 } from "uuid";
-import axios from "axios";
+import { sendChatMessage } from "@/lib/api-client";
 import MarkdownRenderer from "@/components/ui/markdown-renderer";
 import Textarea from "react-textarea-autosize";
 import LoadingSpinner from "./ui/LoadingSpinner";
@@ -73,13 +73,11 @@ export default function AIChatSheet({
     setIsLoading(true);
 
     try {
-      const payload = {
+      const data = await sendChatMessage({
         generated_form: placeInfo.ai_recommendations?.generation || "",
         query: currentInput,
         session_id: sessionId,
-      };
-      const response = await axios.post("/api/form_chat", payload);
-      const data = response.data;
+      });
       const assistantMessage: Message = {
         id: uuidv4(),
         role: "assistant",

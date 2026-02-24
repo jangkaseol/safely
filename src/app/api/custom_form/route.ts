@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase-server";
 import { createLocation } from "@/app/actions/register";
+
+// TODO: 인증 로직 추가 필요
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { locationData, aiRequest } = body;
-    console.log("Received aiRequest:", JSON.stringify(aiRequest, null, 2));
 
     const aiRequestForServer = { ...aiRequest };
     if (
@@ -23,7 +23,13 @@ export async function POST(req: NextRequest) {
     }
 
     // custom_form 전용 외부 API URL
-    const custom_form_url = "http://203.237.81.58:25723/api/custom_form";
+    const custom_form_url = process.env.CUSTOM_FORM_API_URL;
+    if (!custom_form_url) {
+      return NextResponse.json(
+        { error: "API URL이 설정되지 않았습니다.", details: "CUSTOM_FORM_API_URL 환경 변수를 확인하세요." },
+        { status: 500 }
+      );
+    }
 
     const response = await fetch(custom_form_url, {
       method: "POST",
@@ -31,81 +37,45 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(aiRequestForServer), // 프론트에서 받은 aiRequest를 그대로 전달
+      body: JSON.stringify(aiRequestForServer),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(
-        "Custom Form AI Server Error:",
-        errorText,
-        "Status:",
-        response.status
-      );
-      return new NextResponse(
-        JSON.stringify({
-          error: "Custom Form AI 서버에서 오류가 발생했습니다.",
-          details: errorText,
-        }),
-        {
-          status: response.status,
-          headers: { "Content-Type": "application/json" },
-        }
+      console.error("Custom Form AI Server Error:", errorText, "Status:", response.status);
+      return NextResponse.json(
+        { error: "Custom Form AI 서버에서 오류가 발생했습니다.", details: errorText },
+        { status: response.status }
       );
     }
 
-    const aiRecommendation = await response.json(); // AI 분석 결과 (jsonb)
-
-    // const {
-    //   data: { user },
-    // } = await supabaseServer.auth.getUser();
-
-    // if (!user) {
-    //   return new NextResponse(JSON.stringify({ error: "User not found" }), {
-    //     status: 401,
-    //   });
-    // }
+    const aiRecommendation = await response.json();
 
     // DB 저장을 위한 최종 페이로드 구성
     const payload = {
-      locationData: {
-        ...locationData,
-        // user_id: user.id, // MVP 단계에서는 user_id 제거
-      },
+      locationData: { ...locationData },
       files: [],
-      aiRecommendation: aiRecommendation,
+      aiRecommendation,
     };
 
-    const { success, location_id, error } = await createLocation(payload);
+    const { location_id, error } = await createLocation(payload);
 
     if (error) {
       throw new Error(error);
     }
 
-    return new NextResponse(
-      JSON.stringify({
-        success: true,
-        location_id,
-        message: "장소 등록 및 AI 분석 완료",
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    return NextResponse.json({
+      success: true,
+      location_id,
+      message: "장소 등록 및 AI 분석 완료",
+    });
   } catch (error) {
     console.error("Error in custom_form proxy:", error);
     const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred";
-    return new NextResponse(
-      JSON.stringify({
-        error: "An internal server error occurred",
-        details: errorMessage,
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
+      error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+    return NextResponse.json(
+      { error: "내부 서버 오류가 발생했습니다.", details: errorMessage },
+      { status: 500 }
     );
   }
 }

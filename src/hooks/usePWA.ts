@@ -61,8 +61,6 @@ export function usePWA() {
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
-      console.log('[PWA] Install prompt event captured');
-      
       setState(prev => ({
         ...prev,
         isInstallable: true,
@@ -71,7 +69,6 @@ export function usePWA() {
     };
 
     const handleAppInstalled = () => {
-      console.log('[PWA] App was installed');
       setState(prev => ({
         ...prev,
         isInstalled: true,
@@ -94,6 +91,21 @@ export function usePWA() {
     const registerServiceWorker = async () => {
       if ('serviceWorker' in navigator) {
         setIsServiceWorkerSupported(true);
+
+        const pwaEnabled = process.env.NEXT_PUBLIC_ENABLE_PWA === 'true';
+        if (!pwaEnabled) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+          setIsServiceWorkerRegistered(false);
+          return;
+        }
+
+        if (process.env.NODE_ENV !== 'production') {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+          setIsServiceWorkerRegistered(false);
+          return;
+        }
         
         try {
           const registration = await navigator.serviceWorker.register('/sw.js', {
@@ -101,7 +113,6 @@ export function usePWA() {
             updateViaCache: 'none'
           });
 
-          console.log('[PWA] Service worker registered successfully:', registration.scope);
           setIsServiceWorkerRegistered(true);
 
           // Handle service worker updates
@@ -109,10 +120,8 @@ export function usePWA() {
             const newWorker = registration.installing;
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    console.log('[PWA] New service worker available, consider showing update notification');
-                  }
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New service worker available
                 }
               });
             }
@@ -137,8 +146,6 @@ export function usePWA() {
     try {
       await state.installPrompt.prompt();
       const choiceResult = await state.installPrompt.userChoice;
-      
-      console.log('[PWA] User choice:', choiceResult.outcome);
       
       setState(prev => ({
         ...prev,
@@ -174,7 +181,6 @@ export function usePWA() {
       try {
         const registration = await navigator.serviceWorker.ready;
         await registration.update();
-        console.log('[PWA] Service worker update check completed');
       } catch (error) {
         console.error('[PWA] Service worker update failed:', error);
       }

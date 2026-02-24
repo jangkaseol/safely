@@ -2,10 +2,6 @@
 
 import { v4 as uuidv4 } from "uuid";
 
-import { getSupabaseClient } from "@/lib/supabase";
-
-const supabase = getSupabaseClient();
-
 export interface UploadedFile {
   name: string;
   url: string;
@@ -22,6 +18,9 @@ export interface UploadedFile {
  * @returns The URL of the uploaded file.
  */
 export async function uploadFile(file: File): Promise<UploadedFile> {
+  const { getSupabaseClient } = await import("@/lib/supabase");
+  const supabase = getSupabaseClient();
+
   try {
     const bucketName = "travel-files";
 

@@ -62,20 +62,6 @@ export async function createLocation(payload: CreateLocationPayload) {
     }
   }
 
-  // 4. Supabase Edge Function 호출은 더 이상 필요하지 않으므로 주석 처리 또는 삭제
-  /*
-  const { error: functionError } = await supabaseServer.functions.invoke(
-    "process-location-analysis",
-    {
-      body: { location_id: locationId },
-    }
-  );
-
-  if (functionError) {
-    console.error("Error invoking Supabase function:", functionError);
-  }
-  */
-
   return {
     success: true,
     location_id: locationId,

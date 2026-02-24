@@ -1,38 +1,26 @@
 "use client";
 
-import type React from "react";
-import { useState, useRef, useEffect, useCallback, memo, useMemo, lazy, Suspense } from "react";
+import { useState, useCallback, memo, useMemo, lazy, Suspense } from "react";
 import {
   MapPin,
   Star,
-  Calendar,
   Users,
   ChevronLeft,
   Plus,
-  FileText,
-  AlertTriangle,
-  CloudRain,
-  Phone,
-  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  TooltipProvider,
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
 import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import type { Place, AiResponse, HalluCitedChunk } from "@/lib/types";
+import type { Place } from "@/app/actions/places";
 import dynamic from "next/dynamic";
+import { useBottomSheetDrag } from "@/hooks/useBottomSheetDrag";
+import { parseAiRecommendations } from "@/lib/ai-utils";
 
 // Lazy load heavy components
 const LazyAIChatSheet = lazy(() => import("@/components/ai-chat-sheet"));
@@ -48,25 +36,6 @@ interface PlaceDetailBottomSheetProps {
   onSelectPlace: (place: Place) => void;
   onBackToList: () => void;
   isSearchFocused: boolean;
-}
-
-// DB에서 받은 ai_recommendations 값을 파싱하여 화면에 표시할 최종 답변과 출처를 추출하는 함수
-function parseAiRecommendations(
-  recommendations: AiResponse | null | undefined
-): {
-  generation: string | null;
-  citedChunks: HalluCitedChunk[] | null;
-} {
-  // 추천 정보가 없으면 null 반환
-  if (!recommendations) {
-    return { generation: null, citedChunks: null };
-  }
-
-  // 최종 답변과 출처(citations)를 추출하여 반환
-  const generation = recommendations.generation || null;
-  const citedChunks = recommendations.hallu_check?.cited_chunks || null;
-
-  return { generation, citedChunks };
 }
 
 // Memoized place card component
@@ -140,29 +109,11 @@ const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
   onBackToList,
   isSearchFocused,
 }: PlaceDetailBottomSheetProps) {
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const startY = useRef(0);
-  const initialSheetHeight = useRef(0);
+  const { sheetRef, height, isDragging, isContentVisible, handleDragStart } =
+    useBottomSheetDrag();
+
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isRegisterSheetOpen, setIsRegisterSheetOpen] = useState(false);
-  const [activeToggle, setActiveToggle] = useState<
-    "details" | "cases" | "weather" | "none"
-  >("none");
-  const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
-  const [showCitations, setShowCitations] = useState(false);
-
-  // Throttling for drag operations
-  const dragAnimationFrameRef = useRef<number>();
-  const lastDragTime = useRef(0);
-
-  const minHeight = 80;
-  const midHeight =
-    typeof window !== "undefined" ? window.innerHeight * 0.4 : 300;
-  const maxHeight =
-    typeof window !== "undefined" ? window.innerHeight - 164 : 600;
-
-  const [height, setHeight] = useState(minHeight);
 
   // Memoize parsed AI recommendations to prevent expensive re-parsing
   const { generation, citedChunks } = useMemo(() => {
@@ -194,18 +145,6 @@ const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
     };
   }, [selectedPlace, generation]);
 
-  // Memoize analysis sections to prevent re-splitting
-  const analysisSections = useMemo(() => {
-    return placeInfo?.aiAnalysisContent
-      .split("---")
-      .map((s) => s.trim())
-      .filter(Boolean) || [];
-  }, [placeInfo?.aiAnalysisContent]);
-
-  // Memoized event handlers
-  const handleToggleChange = useCallback((value: string) => {
-    setActiveToggle(value as "details" | "cases" | "weather" | "none" || "none");
-  }, []);
 
   const handleAskAI = useCallback(() => {
     if (placeInfo) {
@@ -217,11 +156,6 @@ const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
     setIsRegisterSheetOpen(true);
   }, []);
 
-  const handleClose = useCallback(() => {
-    setHeight(minHeight);
-    onBackToList();
-  }, [onBackToList, minHeight]);
-
   // Memoize place cards to prevent recreation
   const placeCards = useMemo(() => {
     return places.map((place) => (
@@ -232,97 +166,6 @@ const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
       />
     ));
   }, [places, onSelectPlace]);
-
-  const handleStart = useCallback(
-    (
-      e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>
-    ) => {
-      if (!sheetRef.current) return;
-      setIsDragging(true);
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      startY.current = clientY;
-      initialSheetHeight.current = sheetRef.current.clientHeight;
-      sheetRef.current.style.transition = "none";
-    },
-    []
-  );
-
-  const handleMove = useCallback(
-    (e: MouseEvent | TouchEvent) => {
-      if (!isDragging) return;
-
-      // Throttle drag updates using requestAnimationFrame
-      if (dragAnimationFrameRef.current) {
-        cancelAnimationFrame(dragAnimationFrameRef.current);
-      }
-
-      dragAnimationFrameRef.current = requestAnimationFrame(() => {
-        const currentTime = performance.now();
-        // Limit updates to ~60fps (16.67ms intervals)
-        if (currentTime - lastDragTime.current < 16) return;
-
-        const currentY = "touches" in e ? e.touches[0].clientY : e.clientY;
-        const deltaY = currentY - startY.current;
-        let newHeight = initialSheetHeight.current - deltaY;
-        newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
-        setHeight(newHeight);
-
-        lastDragTime.current = currentTime;
-      });
-    },
-    [isDragging, minHeight, maxHeight]
-  );
-
-  const handleEnd = useCallback(() => {
-    if (!isDragging) return;
-
-    // Cancel any pending animation frame
-    if (dragAnimationFrameRef.current) {
-      cancelAnimationFrame(dragAnimationFrameRef.current);
-    }
-
-    setIsDragging(false);
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = "height 0.3s ease-out";
-      const currentHeight = sheetRef.current.clientHeight;
-      let snapHeight = minHeight;
-      if (currentHeight < (minHeight + midHeight) / 2) {
-        snapHeight = minHeight;
-      } else if (currentHeight < (midHeight + maxHeight) / 2) {
-        snapHeight = midHeight;
-      } else {
-        snapHeight = maxHeight;
-      }
-      setHeight(snapHeight);
-    }
-  }, [isDragging, minHeight, midHeight, maxHeight]);
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener("mousemove", handleMove);
-      document.addEventListener("mouseup", handleEnd);
-      document.addEventListener("touchmove", handleMove, { passive: true });
-      document.addEventListener("touchend", handleEnd);
-    } else {
-      document.removeEventListener("mousemove", handleMove);
-      document.removeEventListener("mouseup", handleEnd);
-      document.removeEventListener("touchmove", handleMove);
-      document.removeEventListener("touchend", handleEnd);
-    }
-
-    return () => {
-      // Clean up animation frame on unmount
-      if (dragAnimationFrameRef.current) {
-        cancelAnimationFrame(dragAnimationFrameRef.current);
-      }
-      document.removeEventListener("mousemove", handleMove);
-      document.removeEventListener("mouseup", handleEnd);
-      document.removeEventListener("touchmove", handleMove);
-      document.removeEventListener("touchend", handleEnd);
-    };
-  }, [isDragging, handleMove, handleEnd]);
-
-  const isContentVisible = height > minHeight;
 
   return (
     <>
@@ -337,8 +180,8 @@ const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
       >
         <div
           className="flex justify-center py-3 cursor-grab active:cursor-grabbing touch-none"
-          onMouseDown={handleStart}
-          onTouchStart={handleStart}
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
         >
           <div className="w-12 h-1 bg-gray-300 rounded-full" />
         </div>
@@ -383,168 +226,10 @@ const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
                       AI 안전 분석
                     </AccordionTrigger>
                     <AccordionContent className="pt-2 pb-0">
-                      {analysisSections.length >= 7 ? (
-                        <div className="space-y-4">
-                          {/* 인사말 */}
-                          <div className="p-4 bg-gray-50 rounded-lg">
-                            {renderSection(greeting)}
-                          </div>
-
-                          {/* 핵심 안전수칙 */}
-                          <div className="p-4 border rounded-lg">
-                            {renderSection(coreRules)}
-                          </div>
-
-                          {/* 상세 안내, 유사 사고 사례, 날씨 관련 주의사항 - 세그먼트 토글 (긴 텍스트 대응) */}
-                          <div className="w-full overflow-x-auto">
-                            <ToggleGroup
-                              type="single"
-                              variant="outline"
-                              className="w-full"
-                              value={activeToggle === "none" ? "" : activeToggle}
-                              onValueChange={handleToggleChange}
-                            >
-                              <TooltipProvider delayDuration={150}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <ToggleGroupItem
-                                      value="details"
-                                      className="h-12 gap-2"
-                                    >
-                                      <FileText className="w-5 h-5 text-gray-700" />
-                                      <span className="font-semibold truncate min-w-0">
-                                        상세 안내
-                                      </span>
-                                    </ToggleGroupItem>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom">
-                                    상세 안내
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <ToggleGroupItem
-                                      value="cases"
-                                      className="h-12 gap-2"
-                                    >
-                                      <AlertTriangle className="w-5 h-5 text-gray-700" />
-                                      <span className="font-semibold truncate min-w-0">
-                                        <span className="hidden sm:inline">
-                                          유사 행사 사고 사례
-                                        </span>
-                                        <span className="sm:hidden">
-                                          유사 사고
-                                        </span>
-                                      </span>
-                                    </ToggleGroupItem>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom">
-                                    유사 행사 사고 사례
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <ToggleGroupItem
-                                      value="weather"
-                                      className="h-12 gap-2"
-                                    >
-                                      <CloudRain className="w-5 h-5 text-gray-700" />
-                                      <span className="font-semibold truncate min-w-0">
-                                        <span className="hidden sm:inline">
-                                          날씨 관련 주의사항
-                                        </span>
-                                        <span className="sm:hidden">
-                                          날씨 주의
-                                        </span>
-                                      </span>
-                                    </ToggleGroupItem>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom">
-                                    날씨 관련 주의사항
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </ToggleGroup>
-                          </div>
-
-                          {/* 상세 안내 내용 */}
-                          {activeToggle === "details" && (
-                            <div className="p-4 border rounded-lg animate-in fade-in-50 slide-in-from-top-2 duration-300">
-                              {renderSection(detailedGuide)}
-                            </div>
-                          )}
-
-                          {/* 유사 사례 내용 */}
-                          {activeToggle === "cases" && (
-                            <div className="p-4 border rounded-lg animate-in fade-in-50 slide-in-from-top-2 duration-300">
-                              {renderSection(similarCases)}
-                            </div>
-                          )}
-
-                          {/* 날씨 관련 주의사항 내용 */}
-                          {activeToggle === "weather" && (
-                            <div className="p-4 border rounded-lg animate-in fade-in-50 slide-in-from-top-2 duration-300">
-                              {renderSection(weatherCaution)}
-                            </div>
-                          )}
-
-                          {/* 비상 연락망 토글 아래로 이동 */}
-                          <Accordion
-                            type="single"
-                            collapsible
-                            className="w-full"
-                            onValueChange={(value) =>
-                              setShowEmergencyContacts(!!value)
-                            }
-                          >
-                            <AccordionItem value="emergency">
-                              <AccordionTrigger className="font-semibold text-base flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-                                <Phone className="w-5 h-5 text-gray-700" />
-                                <span>비상 연락망</span>
-                              </AccordionTrigger>
-                              <AccordionContent className="p-4 border rounded-lg mt-2">
-                                {renderSection(emergencyContacts)}
-                              </AccordionContent>
-                            </AccordionItem>
-                          </Accordion>
-
-                          {/* 감사 인사말 */}
-                          <div className="p-4 bg-gray-50 rounded-lg">
-                            {renderSection(closing)}
-                          </div>
-
-                          {/* 참고자료 보기 버튼 */}
-                          <div className="text-center pt-4">
-                            <Button
-                              onClick={() => setShowCitations(!showCitations)}
-                              variant="link"
-                            >
-                              <BookOpen className="w-4 h-4 mr-2" />
-                              {showCitations
-                                ? "참고자료 숨기기"
-                                : "참고자료 보기"}
-                            </Button>
-                          </div>
-
-                          {/* 참고자료 내용 */}
-                          {showCitations && (
-                            <div className="mt-2 p-4 border rounded-lg bg-gray-50 animate-in fade-in-50">
-                              <MarkdownRenderer
-                                content=""
-                                citedChunks={citedChunks || undefined}
-                                showCitationList={true}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <MarkdownRenderer
-                          content={placeInfo.aiAnalysisContent}
-                          citedChunks={citedChunks || undefined}
-                        />
-                      )}
+                      <MarkdownRenderer
+                        content={placeInfo.aiAnalysisContent}
+                        citedChunks={citedChunks || undefined}
+                      />
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
