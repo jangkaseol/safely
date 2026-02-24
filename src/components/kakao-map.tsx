@@ -31,13 +31,13 @@ const getMarkerImageInfo = (
   category: string | null,
   isAccident: boolean = false,
   accidentType?: string | null
-): { src: string } => {
+): { src: string; size: { width: number; height: number } } => {
   // Create cache key
   const cacheKey = `${category}-${isAccident}-${accidentType || 'default'}`;
   
   // Check cache first
   if (markerImageCache.has(cacheKey)) {
-    return { src: markerImageCache.get(cacheKey)! };
+    return { src: markerImageCache.get(cacheKey)!, size: { width: MARKER_SIZE, height: MARKER_SIZE } };
   }
 
   let src: string;
@@ -70,7 +70,7 @@ const getMarkerImageInfo = (
 
   // Cache the result
   markerImageCache.set(cacheKey, src);
-  return { src };
+  return { src, size: { width: MARKER_SIZE, height: MARKER_SIZE } };
 };
 
 // Memoized marker component for better performance
@@ -81,7 +81,7 @@ const MemoizedMapMarker = memo(function MemoizedMapMarkerInner({
   title
 }: {
   position: { lat: number; lng: number };
-  image: { src: string };
+  image: { src: string; size: { width: number; height: number } };
   onClick: () => void;
   title: string;
 }) {

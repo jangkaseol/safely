@@ -10,8 +10,8 @@ const MAP_CACHE = 'map-tiles-v1';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png',
+  '/safely-logo.png',
+  '/safely-logo.png',
   '/_next/static/css/app/layout.css',
   '/_next/static/chunks/webpack.js',
   '/_next/static/chunks/main-app.js'
@@ -125,8 +125,8 @@ self.addEventListener('push', (event) => {
     const data = event.data.json();
     const options = {
       body: data.body || '세이프리 알림',
-      icon: data.icon || '/icon-192x192.png',
-      badge: '/icon-192x192.png',
+      icon: data.icon || '/safely-logo.png',
+      badge: '/safely-logo.png',
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
@@ -136,12 +136,12 @@ self.addEventListener('push', (event) => {
         {
           action: 'open',
           title: 'Open App',
-          icon: '/icon-192x192.png'
+          icon: '/safely-logo.png'
         },
         {
           action: 'close',
           title: 'Close',
-          icon: '/icon-192x192.png'
+          icon: '/safely-logo.png'
         }
       ]
     };

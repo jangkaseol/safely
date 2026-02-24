@@ -8,7 +8,6 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { Accident } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { LOCATION_TYPES } from "@/lib/constants";
-import { usePerformanceMonitoring, useWebVitals } from "@/hooks/usePerformanceMonitoring";
 
 // Lazy load heavy components for better performance
 const LazyKakaoMap = lazy(() => import("@/components/kakao-map"));
@@ -49,17 +48,12 @@ export default function IntegratedMapComponent() {
   });
   const [showSearchButton, setShowSearchButton] = useState(false);
 
-  // Performance monitoring hooks
-  const { startMeasure, endMeasure, recordCacheHit, logPerformanceReport } = usePerformanceMonitoring();
-  const { getWebVitals } = useWebVitals();
-
   const loadData = useCallback(
     async (
       categories: string[],
       center: { lat: number; lng: number },
       searchQuery?: string
     ) => {
-      startMeasure('searchResponseTime');
       setLoading(true);
 
       const placeCategoriesToFetch = categories
@@ -85,46 +79,27 @@ export default function IntegratedMapComponent() {
         accidentsPromise,
       ]);
 
-      // Record cache performance
       if (placesResult.success) {
-        recordCacheHit(true);
         setPlaces(placesResult.data);
-      } else {
-        recordCacheHit(false);
       }
 
       if (accidentsResult.success) {
-        recordCacheHit(true);
         setAccidents(accidentsResult.data);
-      } else {
-        recordCacheHit(false);
       }
 
       setLoading(false);
       setShowSearchButton(false);
       
-      const responseTime = endMeasure('searchResponseTime');
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔍 Search completed in ${responseTime.toFixed(2)}ms`);
-      }
     },
-    [startMeasure, endMeasure, recordCacheHit]
+    []
   );
 
-  // Handle map load performance
-  const handleMapLoad = useCallback(() => {
-    const loadTime = endMeasure('mapLoadTime');
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`📍 Map loaded in ${loadTime.toFixed(2)}ms`);
-      logPerformanceReport();
-    }
-  }, [endMeasure, logPerformanceReport]);
-
-  // Start map load measurement on component mount
   useEffect(() => {
-    startMeasure('mapLoadTime');
-    loadData(currentCategories, mapCenter);
-  }, []);
+    loadData(
+      ["tourist_spot", "festival"],
+      { lat: 36.5, lng: 127.5 }
+    );
+  }, [loadData]);
 
   const handleSearch = useCallback((query: string) => {
     setCurrentSearchQuery(query);
@@ -205,7 +180,6 @@ export default function IntegratedMapComponent() {
             }}
             onMapMove={handleMapMove}
             center={mapCenter}
-            onMapLoad={handleMapLoad}
           />
         </Suspense>
       </div>
@@ -223,6 +197,7 @@ export default function IntegratedMapComponent() {
           <LazyAccidentOverlay
             accident={selectedAccident}
             onClose={() => setSelectedAccident(null)}
+            onMoreInfo={() => setIsDetailModalOpen(true)}
           />
         )}
       </Suspense>
