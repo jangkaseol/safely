@@ -30,7 +30,7 @@ export default function AccidentOverlay({
           <CardTitle>{accident.accident_type}</CardTitle>
           <button
             onClick={onClose}
-            className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
           >
             &times;
           </button>

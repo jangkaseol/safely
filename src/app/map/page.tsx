@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default function MapPage() {
   return (
-    <div className="h-screen bg-gray-50 overflow-hidden">
+    <div className="h-screen bg-secondary overflow-hidden">
       <Header />
       <div className="relative h-[calc(100dvh-3.5rem)] min-h-[320px]">
         <IntegratedMapComponent />

@@ -67,7 +67,7 @@ const MemoizedPlaceCard = memo(function PlaceCard({
         />
         {place.category && (
           <div className="absolute top-2 left-2">
-            <div className="bg-black bg-opacity-50 text-white px-2 py-1 rounded-md text-xs">
+            <div className="bg-foreground/50 text-primary-foreground px-2 py-1 rounded-md text-xs">
               {place.category === "tourist_spot" ? "관광지" : place.category === "festival" ? "축제" : place.category}
             </div>
           </div>
@@ -76,14 +76,14 @@ const MemoizedPlaceCard = memo(function PlaceCard({
       <CardContent className="p-4">
         <div className="space-y-2">
           <h3 className="font-semibold text-lg line-clamp-1">{place.name}</h3>
-          <p className="text-gray-600 text-sm flex items-center">
+          <p className="text-muted-foreground text-sm flex items-center">
             <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
             <span className="line-clamp-1">{place.address}</span>
           </p>
           {place.description && (
-            <p className="text-gray-700 text-sm line-clamp-2">{place.description}</p>
+            <p className="text-foreground text-sm line-clamp-2">{place.description}</p>
           )}
-          <div className="flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center">
               <Star className="w-3 h-3 mr-1" />
               <span>{place.rating || "N/A"}</span>
@@ -172,7 +172,7 @@ const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
       <div
         ref={sheetRef}
         className={cn(
-          "fixed inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-lg flex flex-col z-30",
+          "fixed inset-x-0 bottom-0 bg-card rounded-t-2xl shadow-lg flex flex-col z-30",
           "transition-transform duration-300 ease-out",
           isDragging && "transition-none"
         )}
@@ -183,7 +183,7 @@ const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
           onMouseDown={handleDragStart}
           onTouchStart={handleDragStart}
         >
-          <div className="w-12 h-1 bg-gray-300 rounded-full" />
+          <div className="w-12 h-1 bg-border rounded-full" />
         </div>
 
         {isContentVisible && (
@@ -204,12 +204,12 @@ const PlaceDetailBottomSheet = memo(function PlaceDetailBottomSheet({
                   </h2>
                 </div>
 
-                <div className="flex items-center text-gray-600 mb-4">
+                <div className="flex items-center text-muted-foreground mb-4">
                   <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
                   <span className="text-sm">{placeInfo.address}</span>
                 </div>
 
-                <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center mb-6">
+                <div className="w-full h-48 bg-muted rounded-lg overflow-hidden flex items-center justify-center mb-6">
                   <img
                     src={
                       placeInfo.imageUrl ||

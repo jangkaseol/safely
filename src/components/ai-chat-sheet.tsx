@@ -120,7 +120,7 @@ export default function AIChatSheet({
   return (
     <div
       className={cn(
-        "fixed inset-0 bg-white z-40 flex flex-col",
+        "fixed inset-0 bg-card z-40 flex flex-col",
         "transform transition-transform duration-300 ease-out",
         isOpen ? "translate-y-0" : "translate-y-full"
       )}
@@ -131,14 +131,14 @@ export default function AIChatSheet({
         </Button>
         <div className="flex-1 text-center mx-4">
           <h3 className="font-bold text-lg">{placeInfo.name}</h3>
-          <p className="text-sm text-gray-600 truncate">{placeInfo.address}</p>
+          <p className="text-sm text-muted-foreground truncate">{placeInfo.address}</p>
         </div>
         <div className="w-10 h-10"></div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-          <div className="text-center text-gray-500 mt-8">
+          <div className="text-center text-muted-foreground mt-8">
             AI에게 이 여행지에 대해 무엇이든 물어보세요!
           </div>
         )}
@@ -152,33 +152,33 @@ export default function AIChatSheet({
             )}
           >
             {msg.role === "assistant" && (
-              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                <Bot className="w-5 h-5 text-gray-600" />
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <Bot className="w-5 h-5 text-muted-foreground" />
               </div>
             )}
             <div
               className={cn(
                 "p-3 rounded-lg max-w-[85%]",
                 msg.role === "user"
-                  ? "bg-gray-900 text-white"
-                  : "bg-gray-100 text-gray-800"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-foreground"
               )}
             >
               <MarkdownRenderer content={msg.content} />
             </div>
             {msg.role === "user" && (
-              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-gray-600" />
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <User className="w-5 h-5 text-muted-foreground" />
               </div>
             )}
           </div>
         ))}
         {isLoading && (
           <div className="flex items-start gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-              <Bot className="w-5 h-5 text-gray-600" />
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+              <Bot className="w-5 h-5 text-muted-foreground" />
             </div>
-            <div className="p-3 rounded-lg bg-gray-100">
+            <div className="p-3 rounded-lg bg-muted">
               <LoadingSpinner />
             </div>
           </div>
@@ -186,10 +186,10 @@ export default function AIChatSheet({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 border-t bg-white">
+      <div className="p-4 border-t bg-card">
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2 rounded-lg border bg-white p-1.5"
+          className="flex items-center gap-2 rounded-lg border bg-card p-1.5"
         >
           <Textarea
             placeholder="AI에게 무엇이든 물어보세요..."

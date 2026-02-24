@@ -180,12 +180,12 @@ export default function TopSearchAndCategories({
   return (
     <div
       ref={containerRef}
-      className="w-full bg-white shadow-md z-20 px-4 pt-4 pb-1.5 rounded-none"
+      className="w-full bg-card shadow-md z-20 px-4 pt-4 pb-1.5 rounded-none"
     >
       {/* 검색 입력창 */}
       <div className="relative">
         <div
-          className="flex items-center gap-2 bg-white rounded-xl border border-gray-200 px-3 py-2.5 shadow-sm focus-within:border-gray-400 focus-within:ring-1 focus-within:ring-gray-200 mb-3"
+          className="flex items-center gap-2 bg-card rounded-xl border border-border px-3 py-2.5 shadow-sm focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 mb-3"
           onClick={() => inputRef.current?.focus()}
         >
           <Input
@@ -204,7 +204,7 @@ export default function TopSearchAndCategories({
             className="flex-1 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0"
           />
           {isSearching && (
-            <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+            <Loader2 className="w-4 h-4 text-muted-foreground/70 animate-spin" />
           )}
         </div>
 
@@ -213,20 +213,20 @@ export default function TopSearchAndCategories({
           suggestions.length > 0 && (
             <div
               role="listbox"
-              className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto"
+              className="absolute top-full left-0 right-0 bg-card border border-border rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto"
             >
               {suggestions.map((suggestion) => (
                 <div
                   key={suggestion.id}
                   role="option"
-                  className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  className="px-4 py-3 hover:bg-muted/50 cursor-pointer border-b border-border last:border-b-0"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSuggestionClick(suggestion)}
                 >
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-foreground">
                     {suggestion.name}
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-sm text-muted-foreground mt-1">
                     {suggestion.location}
                   </div>
                 </div>
@@ -251,8 +251,8 @@ export default function TopSearchAndCategories({
               className={cn(
                 "rounded-full whitespace-nowrap shadow-sm",
                 isSelected
-                  ? "bg-gray-900 text-white hover:bg-gray-800"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-card text-foreground border-border hover:bg-muted/50"
               )}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleCategoryClick(category.id)}

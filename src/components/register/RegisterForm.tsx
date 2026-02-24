@@ -153,7 +153,7 @@ export default function RegisterForm() {
                 >
                   <Label
                     htmlFor="always"
-                    className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100 transition-colors"
+                    className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-muted transition-colors"
                   >
                     <RadioGroupItem
                       value={PERIOD_TYPE.ALWAYS}
@@ -166,7 +166,7 @@ export default function RegisterForm() {
                   </Label>
                   <Label
                     htmlFor="period"
-                    className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100 transition-colors"
+                    className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-muted transition-colors"
                   >
                     <RadioGroupItem
                       value={PERIOD_TYPE.PERIOD}
@@ -317,9 +317,9 @@ export default function RegisterForm() {
               <Label className="text-base font-medium">
                 관련 데이터 첨부 (선택)
               </Label>
-              <div className="rounded-lg border-2 border-dashed border-gray-200 p-6 text-center">
-                <Upload className="mx-auto h-10 w-10 text-gray-400" />
-                <p className="mt-2 text-sm text-gray-600">
+              <div className="rounded-lg border-2 border-dashed border-border p-6 text-center">
+                <Upload className="mx-auto h-10 w-10 text-muted-foreground/70" />
+                <p className="mt-2 text-sm text-muted-foreground">
                   파일을 끌어다 놓거나 클릭하여 업로드
                 </p>
                 <Button asChild variant="outline" className="mt-4 text-sm">
@@ -334,7 +334,7 @@ export default function RegisterForm() {
                     />
                   </label>
                 </Button>
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-muted-foreground">
                   PDF, DOCX, DOC, JPG, PNG (HWP 미지원)
                 </p>
               </div>
@@ -342,7 +342,7 @@ export default function RegisterForm() {
                 {dataFiles.map((df) => (
                   <div
                     key={df.id}
-                    className="flex items-center gap-2 rounded-md border bg-gray-50 p-3"
+                    className="flex items-center gap-2 rounded-md border bg-secondary p-3"
                   >
                     <div className="flex-1 space-y-2">
                       <p className="text-sm font-medium truncate">
@@ -354,7 +354,7 @@ export default function RegisterForm() {
                         onChange={(e) =>
                           updateDataFileDescription(df.id, e.target.value)
                         }
-                        className="bg-white h-8 text-sm"
+                        className="bg-card h-8 text-sm"
                       />
                     </div>
                     <Button
@@ -422,7 +422,7 @@ export default function RegisterForm() {
                     size="sm"
                     onClick={() => removeEmergencyContact(contact.id)}
                     disabled={emergencyContacts.length <= 1}
-                    className="w-full text-red-500"
+                    className="w-full text-destructive"
                   >
                     - 연락처 삭제
                   </Button>

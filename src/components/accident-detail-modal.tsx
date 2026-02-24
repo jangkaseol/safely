@@ -50,8 +50,8 @@ export default function AccidentDetailModal({
                 className="rounded-md"
               />
             ) : (
-              <div className="flex items-center justify-center h-full bg-gray-100 rounded-md">
-                <p className="text-gray-500">이미지가 없습니다.</p>
+              <div className="flex items-center justify-center h-full bg-muted rounded-md">
+                <p className="text-muted-foreground">이미지가 없습니다.</p>
               </div>
             )}
           </div>

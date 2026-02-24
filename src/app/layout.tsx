@@ -36,14 +36,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html lang="ko">
       <body className={`${inter.variable} ${notoSansKR.variable} font-sans`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ThemeProvider>
           {/*
             카카오 맵 스크립트 로딩 주의사항:
             1. libraries=services 필수: Geocoder 등 서비스 라이브러리 사용 위해 반드시 포함

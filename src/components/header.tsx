@@ -14,20 +14,20 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 h-14">
+    <header className="bg-card/80 backdrop-blur-md border-b border-border sticky top-0 z-50 h-14">
       <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
         {/* Left: Logo */}
         <Link href="/" className="flex items-center gap-2">
           <img src="/safely-logo.png" alt="세이프리" className="w-7 h-7" />
-          <span className="text-base font-semibold text-gray-900">세이프리</span>
+          <span className="text-base font-semibold text-foreground">세이프리</span>
         </Link>
 
         {/* Center: Nav (desktop) */}
         <nav className="hidden md:flex items-center gap-6">
-          <Link href="/map" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+          <Link href="/map" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             지도
           </Link>
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             소개
           </Link>
         </nav>
@@ -38,7 +38,7 @@ export default function Header() {
             variant="ghost"
             size="sm"
             onClick={handleLoginClick}
-            className="hidden md:inline-flex text-sm text-gray-600 hover:text-gray-900"
+            className="hidden md:inline-flex text-sm text-muted-foreground hover:text-foreground"
           >
             로그인
           </Button>
@@ -57,24 +57,24 @@ export default function Header() {
 
       {/* Mobile menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-gray-100 px-4 py-3 space-y-1">
+        <div className="md:hidden bg-card border-b border-border px-4 py-3 space-y-1">
           <Link
             href="/map"
-            className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg"
+            className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             지도
           </Link>
           <Link
             href="/"
-            className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg"
+            className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             소개
           </Link>
           <button
             onClick={() => { handleLoginClick(); setIsMobileMenuOpen(false); }}
-            className="block w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg"
+            className="block w-full text-left px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
           >
             로그인
           </button>

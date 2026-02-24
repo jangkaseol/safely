@@ -15,10 +15,10 @@ const LazyAccidentDetailModal = lazy(() => import("./accident-detail-modal"));
 // Map loading component
 function MapLoadingSkeleton() {
   return (
-    <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+    <div className="w-full h-full bg-secondary flex items-center justify-center">
       <div className="text-center">
         <LoadingSpinner />
-        <p className="mt-4 text-gray-600 text-sm">지도를 불러오는 중...</p>
+        <p className="mt-4 text-muted-foreground text-sm">지도를 불러오는 중...</p>
       </div>
     </div>
   );
@@ -62,7 +62,7 @@ export default function IntegratedMapComponent() {
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20">
           <Button
             onClick={handleSearchInArea}
-            className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 shadow-md"
+            className="bg-card hover:bg-muted/50 text-foreground border border-border shadow-md"
             disabled={isLoading}
           >
             {isLoading ? "검색 중..." : "이 지역에서 검색"}
@@ -111,10 +111,10 @@ export default function IntegratedMapComponent() {
       </Suspense>
 
       {isLoading && (
-        <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-30">
+        <div className="absolute inset-0 bg-card/60 backdrop-blur-sm flex items-center justify-center z-30">
           <div className="text-center">
             <LoadingSpinner />
-            <p className="mt-2 text-gray-600 text-sm">데이터를 불러오는 중...</p>
+            <p className="mt-2 text-muted-foreground text-sm">데이터를 불러오는 중...</p>
           </div>
         </div>
       )}

@@ -6,6 +6,9 @@ import { LOCATION_TYPES, MARKER_SIZE } from "@/lib/constants";
 import type { Place } from "@/app/actions/places";
 import type { Accident } from "@/lib/types";
 
+// Accident marker color constant (orange-500) — kept as hex for SVG generation
+const ACCIDENT_MARKER_COLOR = "#f97316";
+
 interface KakaoMapProps {
   places?: Place[];
   accidents?: Accident[];
@@ -46,7 +49,7 @@ const getMarkerImageInfo = (
     src = "/firecracker.png";
   } else {
     // Only generate SVG for default markers and cache the result
-    const color = "#f97316"; // orange-500
+    const color = ACCIDENT_MARKER_COLOR;
     const icon = `<path fill="${color}" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>`;
 
     const svgString = `
@@ -200,9 +203,9 @@ const KakaoMap = memo(function KakaoMap({
         }}
         yAnchor={1.5}
       >
-        <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm font-medium relative">
+        <div className="bg-primary text-primary-foreground px-3 py-2 rounded-lg shadow-lg text-sm font-medium relative">
           {selectedPlace.name}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-gray-900"></div>
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-primary"></div>
         </div>
       </MemoizedCustomOverlay>
     );
@@ -304,8 +307,8 @@ const KakaoMap = memo(function KakaoMap({
       : loadError ?? "지도를 불러오는 중...";
 
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100">
-        <div className="text-gray-600">{loadingMessage}</div>
+      <div className="w-full h-full flex items-center justify-center bg-muted">
+        <div className="text-muted-foreground">{loadingMessage}</div>
       </div>
     );
   }
