@@ -22,16 +22,15 @@ export async function POST(req: NextRequest) {
       delete aiRequestForServer.related_documents;
     }
 
-    // custom_form 전용 외부 API URL
-    const custom_form_url = process.env.CUSTOM_FORM_API_URL;
-    if (!custom_form_url) {
+    const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) {
       return NextResponse.json(
-        { error: "API URL이 설정되지 않았습니다.", details: "CUSTOM_FORM_API_URL 환경 변수를 확인하세요." },
+        { error: "API URL이 설정되지 않았습니다.", details: "API_URL 환경 변수를 확인하세요." },
         { status: 500 }
       );
     }
 
-    const response = await fetch(custom_form_url, {
+    const response = await fetch(`${apiUrl}/api/custom_form`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
